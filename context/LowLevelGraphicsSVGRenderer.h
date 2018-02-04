@@ -55,7 +55,7 @@ private:
 
     juce::String truncateFloat(float);
 
-    void setClip();
+    void setClip(const juce::Path&);
     void setMask(const juce::Image&);
 
     struct SavedState

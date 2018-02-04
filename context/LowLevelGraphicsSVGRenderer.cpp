@@ -35,7 +35,7 @@ void LowLevelGraphicsSVGRenderer::setOrigin(juce::Point<int> p)
     state->xOffset = p.x;
     state->yOffset = p.y;
 
-    setClip();
+    setClip(state->clipRegions.toPath());
 }
 
 void LowLevelGraphicsSVGRenderer::addTransform(const juce::AffineTransform &t)
@@ -45,7 +45,7 @@ void LowLevelGraphicsSVGRenderer::addTransform(const juce::AffineTransform &t)
     state->clipRegions.transformAll(t);
     state->clipPath.applyTransform(t);
 
-    setClip();
+    setClip(state->clipRegions.toPath());
 }
 
 float LowLevelGraphicsSVGRenderer::getPhysicalPixelScaleFactor()
@@ -58,7 +58,7 @@ bool LowLevelGraphicsSVGRenderer::clipToRectangle(const juce::Rectangle<int> &r)
     state->clipRegions.clear();
     state->clipRegions.add(r);
 
-    setClip();
+    setClip(state->clipRegions.toPath());
 
     return !isClipEmpty();
 }
@@ -67,7 +67,7 @@ bool LowLevelGraphicsSVGRenderer::clipToRectangleList(const juce::RectangleList<
 {
     state->clipRegions = r;
 
-    setClip();
+    setClip(state->clipRegions.toPath());
 
     return !isClipEmpty();
 }
@@ -76,15 +76,17 @@ void LowLevelGraphicsSVGRenderer::excludeClipRectangle(const juce::Rectangle<int
 {
     state->clipRegions.subtract(r);
 
-    setClip();
+    setClip(state->clipRegions.toPath());
 }
 
 void LowLevelGraphicsSVGRenderer::clipToPath(const juce::Path &p, const juce::AffineTransform &t)
 {
-    state->clipPath = p;
+    auto temp = p;
 
     if (!t.isIdentity())
-        state->clipPath.applyTransform(t);
+        temp.applyTransform(t);
+
+    setClip(temp);
 }
 
 void LowLevelGraphicsSVGRenderer::clipToImageAlpha(const juce::Image &i, const juce::AffineTransform &t)
@@ -393,18 +395,19 @@ juce::String LowLevelGraphicsSVGRenderer::truncateFloat(float value)
 {
     auto string = juce::String(value, 2);
 
-    while(string.getLastCharacters(1) == "." || (string.getLastCharacters(1) == "0" && string.length() > 1))
+    while(string.getLastCharacters(1) == "." || (string.getLastCharacters(1) == "0" && string.contains(".")))
         string = string.dropLastCharacters(1);
 
     return string;
 }
 
-void LowLevelGraphicsSVGRenderer::setClip()
+void LowLevelGraphicsSVGRenderer::setClip(const juce::Path &p)
 {
-    if (state->clipPath == state->clipRegions.toPath() && state->clipGroup)
+    if (state->clipPath == p && state->clipGroup)
         return;
 
-    state->clipPath = state->clipRegions.toPath();
+    state->clipPath = p;
+    state->clipPath.applyTransform(juce::AffineTransform().translated(state->xOffset, state->yOffset));
 
     auto defs = document->getChildByName("defs");
     juce::String clipRef = juce::String::formatted("#ClipPath%d", defs->getNumChildElements());
@@ -423,10 +426,7 @@ void LowLevelGraphicsSVGRenderer::setClip()
             )
         );
 
-    if (state->clipGroup->hasAttribute("id"))
-        state->clipGroup = state->clipGroup->createNewChildElement("g");
-    else
-        state->clipGroup = document->createNewChildElement("g");
+    state->clipGroup = state->clipGroup->createNewChildElement("g");
 
     state->clipGroup->setAttribute("clip-path", "url(" + clipRef + ")");
 }
