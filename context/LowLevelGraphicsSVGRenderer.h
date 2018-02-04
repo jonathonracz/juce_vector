@@ -48,6 +48,8 @@ private:
     juce::String rgb(const juce::Colour&);
     juce::String fill();
 
+    juce::String truncateFloat(float);
+
     void setClip();
     void setMask(const juce::Image&);
 

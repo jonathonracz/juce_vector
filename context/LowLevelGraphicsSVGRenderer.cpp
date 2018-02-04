@@ -178,35 +178,37 @@ void LowLevelGraphicsSVGRenderer::setFill(const juce::FillType &fill)
 
         e->setAttribute("id", state->gradientRef.replace("#", ""));
 
+        e->setAttribute("gradientUnits", "userSpaceOnUse");
+
         auto point1 = fill.gradient->point1.translated(state->xOffset, state->yOffset);
         auto point2 = fill.gradient->point2.translated(state->xOffset, state->yOffset);
 
         if (fill.gradient->isRadial)
         {
-            e->setAttribute("cx", point1.x);
-            e->setAttribute("cy", point1.y);
-            e->setAttribute("r",  point1.getDistanceFrom(point2));
-            e->setAttribute("fx", point2.x);
-            e->setAttribute("fy", point2.y);
+            e->setAttribute("cx", truncateFloat(point1.x));
+            e->setAttribute("cy", truncateFloat(point1.y));
+            e->setAttribute("r",  truncateFloat(point1.getDistanceFrom(point2)));
+            e->setAttribute("fx", truncateFloat(point2.x));
+            e->setAttribute("fy", truncateFloat(point2.y));
         }
         else
         {
-            e->setAttribute("x1", point1.x);
-            e->setAttribute("y1", point1.y);
-            e->setAttribute("x2", point2.x);
-            e->setAttribute("y2", point2.y);
+            e->setAttribute("x1", truncateFloat(point1.x));
+            e->setAttribute("y1", truncateFloat(point1.y));
+            e->setAttribute("x2", truncateFloat(point2.x));
+            e->setAttribute("y2", truncateFloat(point2.y));
         }
 
         for (int i = 0; i < fill.gradient->getNumColours(); ++i)
         {
             auto stop = e->createNewChildElement("stop");
-            stop->setAttribute("offset", fill.gradient->getColourPosition(i));
+            stop->setAttribute("offset", truncateFloat(fill.gradient->getColourPosition(i)));
 
             if (!state->transform.isIdentity())
                 stop->setAttribute("gradientTransform", matrix(state->transform));
 
             stop->setAttribute("stop-color", rgb(fill.gradient->getColour(i)));
-            stop->setAttribute("stop-opacity", fill.gradient->getColour(i).getFloatAlpha());
+            stop->setAttribute("stop-opacity", truncateFloat(fill.gradient->getColour(i).getFloatAlpha()));
         }
     }
 }
@@ -236,12 +238,12 @@ void LowLevelGraphicsSVGRenderer::fillRect(const juce::Rectangle<float> &r)
         rect = document->createNewChildElement("rect");
 
     rect->setAttribute("fill", fill());
-    rect->setAttribute("fill-opacity", state->fillType.getOpacity());
+    rect->setAttribute("fill-opacity", truncateFloat(state->fillType.getOpacity()));
 
-    rect->setAttribute("x", r.getX() + state->xOffset);
-    rect->setAttribute("y", r.getY() + state->yOffset);
-    rect->setAttribute("width", r.getWidth());
-    rect->setAttribute("height", r.getHeight());
+    rect->setAttribute("x", truncateFloat(r.getX() + state->xOffset));
+    rect->setAttribute("y", truncateFloat(r.getY() + state->yOffset));
+    rect->setAttribute("width",  truncateFloat(r.getWidth()));
+    rect->setAttribute("height", truncateFloat(r.getHeight()));
 }
 
 void LowLevelGraphicsSVGRenderer::fillRectList(const juce::RectangleList<float> &r)
@@ -262,7 +264,7 @@ void LowLevelGraphicsSVGRenderer::fillPath(const juce::Path &p, const juce::Affi
     temp.applyTransform(t.translated(state->xOffset, state->yOffset).followedBy(state->transform));
     path->setAttribute("d", temp.toString().toUpperCase());
     path->setAttribute("fill", fill());
-    path->setAttribute("fill-opacity", state->fillType.getOpacity());
+    path->setAttribute("fill-opacity", truncateFloat(state->fillType.getOpacity()));
 
     if (!p.isUsingNonZeroWinding())
         path->setAttribute("fill-rule", "evenodd");
@@ -300,12 +302,12 @@ void LowLevelGraphicsSVGRenderer::drawLine(const juce::Line<float> &l)
     else
         line = document->createNewChildElement("line");
 
-    line->setAttribute("x1", l.getStartX() + state->xOffset);
-    line->setAttribute("y1", l.getStartY() + state->yOffset);
-    line->setAttribute("x2", l.getEndX() + state->xOffset);
-    line->setAttribute("y2", l.getEndY() + state->yOffset);
+    line->setAttribute("x1", truncateFloat(l.getStartX() + state->xOffset));
+    line->setAttribute("y1", truncateFloat(l.getStartY() + state->yOffset));
+    line->setAttribute("x2", truncateFloat(l.getEndX()   + state->xOffset));
+    line->setAttribute("y2", truncateFloat(l.getEndY()   + state->yOffset));
     line->setAttribute("stroke", fill());
-    line->setAttribute("stroke-opacity", state->fillType.getOpacity());
+    line->setAttribute("stroke-opacity", truncateFloat(state->fillType.getOpacity()));
 
     if (!state->transform.isIdentity())
         line->setAttribute("transform", matrix(state->transform));
@@ -356,6 +358,16 @@ juce::String LowLevelGraphicsSVGRenderer::fill()
         return "url(" + state->gradientRef + ")";
     else
         return rgb(state->fillType.colour);
+}
+
+juce::String LowLevelGraphicsSVGRenderer::truncateFloat(float value)
+{
+    auto string = juce::String(value, 2);
+
+    while(string.getLastCharacters(1) == "." || (string.getLastCharacters(1) == "0" && string.length() > 1))
+        string = string.dropLastCharacters(1);
+
+    return string;
 }
 
 void LowLevelGraphicsSVGRenderer::setClip()
