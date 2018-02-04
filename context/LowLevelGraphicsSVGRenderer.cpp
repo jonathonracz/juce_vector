@@ -335,6 +335,35 @@ void LowLevelGraphicsSVGRenderer::drawGlyph(int glyphNumber, const juce::AffineT
     fillPath(p, juce::AffineTransform());
 }
 
+void LowLevelGraphicsSVGRenderer::pushGroup(const juce::String& groupID)
+{
+    if (!state->clipGroup)
+        state->clipGroup = document->createNewChildElement("g");
+    else
+        state->clipGroup = state->clipGroup->createNewChildElement("g");
+
+    state->clipGroup->setAttribute("id", groupID);
+}
+
+void LowLevelGraphicsSVGRenderer::popGroup()
+{
+    jassert(state->clipGroup);
+
+    if (state->clipGroup->hasAttribute("id"))
+    {
+        auto temp = state->clipGroup;
+
+        state->clipGroup = document->findParentElementOf(state->clipGroup);
+
+        if (temp->getNumChildElements() == 0)
+            state->clipGroup->removeChildElement(temp, true);
+    }
+    else
+    {
+        jassertfalse;  // More popGroup() calls than pushGroup()!
+    }
+}
+
 juce::String LowLevelGraphicsSVGRenderer::matrix(const juce::AffineTransform &t)
 {
     return juce::String::formatted(
@@ -394,6 +423,10 @@ void LowLevelGraphicsSVGRenderer::setClip()
             )
         );
 
-    state->clipGroup = document->createNewChildElement("g");
+    if (state->clipGroup->hasAttribute("id"))
+        state->clipGroup = state->clipGroup->createNewChildElement("g");
+    else
+        state->clipGroup = document->createNewChildElement("g");
+
     state->clipGroup->setAttribute("clip-path", "url(" + clipRef + ")");
 }

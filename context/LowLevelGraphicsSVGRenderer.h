@@ -42,6 +42,11 @@ public:
     const juce::Font& getFont() override;
     void drawGlyph(int glyphNumber, const juce::AffineTransform&) override;
 
+    // =========================================================================
+
+    void pushGroup(const juce::String&);
+    void popGroup();
+
 private:
     // String format helpers
     juce::String matrix(const juce::AffineTransform&);
