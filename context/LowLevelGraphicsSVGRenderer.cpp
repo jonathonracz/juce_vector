@@ -16,6 +16,7 @@ LowLevelGraphicsSVGRenderer::LowLevelGraphicsSVGRenderer(
     jassert(document->getNumChildElements() == 0);
 
     document->setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    document->setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
 
     document->setAttribute(
         "viewbox",
@@ -107,13 +108,15 @@ void LowLevelGraphicsSVGRenderer::clipToImageAlpha(const juce::Image &i, const j
     image->setAttribute("y", state->yOffset);
     image->setAttribute("width", i.getWidth());
     image->setAttribute("height", i.getHeight());
-    image->setAttribute("transform", matrix(state->transform.followedBy(t)));
 
-    juce::Image::BitmapData bitmapData(maskImage, juce::Image::BitmapData::readOnly);
-    int bitmapDataSize = bitmapData.lineStride * bitmapData.height;
+    if (!t.isIdentity())
+        image->setAttribute("transform", matrix(state->transform.followedBy(t)));
 
-    juce::String base64Data = juce::Base64::toBase64(bitmapData.data, bitmapDataSize);
+    juce::MemoryOutputStream out;
+    juce::PNGImageFormat png;
+    png.writeImageToStream(i, out);
 
+    juce::String base64Data = juce::Base64::toBase64(out.getData(), out.getDataSize());
     image->setAttribute("xlink:href", "data:image/png;base64," + base64Data);
 
     state->clipGroup = document->createNewChildElement("g");
@@ -285,13 +288,15 @@ void LowLevelGraphicsSVGRenderer::drawImage(const juce::Image &i, const juce::Af
     image->setAttribute("y", state->yOffset);
     image->setAttribute("width", i.getWidth());
     image->setAttribute("height", i.getHeight());
-    image->setAttribute("transform", matrix(state->transform.followedBy(t)));
 
-    juce::Image::BitmapData bitmapData(i, juce::Image::BitmapData::readOnly);
-    int bitmapDataSize = bitmapData.lineStride * bitmapData.height;
+    if (!t.isIdentity())
+        image->setAttribute("transform", matrix(state->transform.followedBy(t)));
 
-    juce::String base64Data = juce::Base64::toBase64(bitmapData.data, bitmapDataSize);
+    juce::MemoryOutputStream out;
+    juce::PNGImageFormat png;
+    png.writeImageToStream(i, out);
 
+    juce::String base64Data = juce::Base64::toBase64(out.getData(), out.getDataSize());
     image->setAttribute("xlink:href", "data:image/png;base64," + base64Data);
 }
 
