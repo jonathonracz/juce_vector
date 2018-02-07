@@ -33,10 +33,12 @@ bool LowLevelGraphicsSVGRenderer::isVectorDevice() const
 
 void LowLevelGraphicsSVGRenderer::setOrigin(juce::Point<int> p)
 {
-    state->xOffset = p.x;
-    state->yOffset = p.y;
-
-    setClip(state->clipRegions.toPath());
+    if (p.x != state->xOffset || p.y != state->yOffset)
+    {
+        state->xOffset += p.x;
+        state->yOffset += p.y;
+        setClip(state->clipPath);
+    }
 }
 
 void LowLevelGraphicsSVGRenderer::addTransform(const juce::AffineTransform &t)
@@ -56,8 +58,7 @@ float LowLevelGraphicsSVGRenderer::getPhysicalPixelScaleFactor()
 
 bool LowLevelGraphicsSVGRenderer::clipToRectangle(const juce::Rectangle<int> &r)
 {
-    state->clipRegions.clear();
-    state->clipRegions.add(r);
+    state->clipRegions.clipTo(r.translated(state->xOffset, state->yOffset));
 
     setClip(state->clipRegions.toPath());
 
@@ -66,7 +67,7 @@ bool LowLevelGraphicsSVGRenderer::clipToRectangle(const juce::Rectangle<int> &r)
 
 bool LowLevelGraphicsSVGRenderer::clipToRectangleList(const juce::RectangleList<int> &r)
 {
-    state->clipRegions = r;
+    state->clipRegions.clipTo(r);
 
     setClip(state->clipRegions.toPath());
 
@@ -75,7 +76,7 @@ bool LowLevelGraphicsSVGRenderer::clipToRectangleList(const juce::RectangleList<
 
 void LowLevelGraphicsSVGRenderer::excludeClipRectangle(const juce::Rectangle<int> &r)
 {
-    state->clipRegions.subtract(r);
+    state->clipRegions.subtract(r.translated(state->xOffset, state->yOffset));
 
     setClip(state->clipRegions.toPath());
 }
@@ -83,10 +84,7 @@ void LowLevelGraphicsSVGRenderer::excludeClipRectangle(const juce::Rectangle<int
 void LowLevelGraphicsSVGRenderer::clipToPath(const juce::Path &p, const juce::AffineTransform &t)
 {
     auto temp = p;
-
-    if (!t.isIdentity())
-        temp.applyTransform(t);
-
+    temp.applyTransform(t.translated(state->xOffset, state->yOffset));
     setClip(temp);
 }
 
@@ -125,12 +123,13 @@ void LowLevelGraphicsSVGRenderer::clipToImageAlpha(const juce::Image &i, const j
 
 bool LowLevelGraphicsSVGRenderer::clipRegionIntersects(const juce::Rectangle<int> &r)
 {
-    return state->clipPath.getBounds().intersects(r.toFloat());
+    auto rect = r.translated(state->xOffset, state->yOffset).toFloat();
+    return state->clipPath.getBounds().intersects(rect);
 }
 
 juce::Rectangle<int> LowLevelGraphicsSVGRenderer::getClipBounds() const
 {
-    return state->clipPath.getBounds().toNearestInt();
+    return state->clipPath.getBounds().translated(-state->xOffset, -state->yOffset).toNearestInt();
 }
 
 bool LowLevelGraphicsSVGRenderer::isClipEmpty() const
@@ -266,8 +265,10 @@ void LowLevelGraphicsSVGRenderer::fillPath(const juce::Path &p, const juce::Affi
         path = document->createNewChildElement("path");
 
     auto temp = p;
-    temp.applyTransform(t.translated(state->xOffset, state->yOffset).followedBy(state->transform));
-    path->setAttribute("d", temp.toString().toUpperCase());
+    temp.applyTransform(t.translated(state->xOffset, state->yOffset));
+
+    juce::String d = temp.toString().removeCharacters("a");
+    path->setAttribute("d", d.toUpperCase());
     path->setAttribute("fill", fill());
     path->setAttribute("fill-opacity", truncateFloat(state->fillType.getOpacity()));
 
@@ -408,11 +409,7 @@ juce::String LowLevelGraphicsSVGRenderer::truncateFloat(float value)
 
 void LowLevelGraphicsSVGRenderer::setClip(const juce::Path &p)
 {
-    if (state->clipPath == p && state->clipGroup)
-        return;
-
     state->clipPath = p;
-    state->clipPath.applyTransform(juce::AffineTransform().translated(state->xOffset, state->yOffset));
 
     auto defs = document->getChildByName("defs");
     juce::String clipRef = juce::String::formatted("#ClipPath%d", defs->getNumChildElements());
