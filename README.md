@@ -20,6 +20,57 @@ Graphics g(renderer);
 paintEntireComponent(g, false);
 ```
 
+### Grouping
+
+You can control the grouping of SVG elements by using the `pushGroup()` and `popGroup()` methods.
+
+The following will create a red rectangle inside of a group called 'Shapes' ( `<g id="Shapes">`):
+
+```C++
+
+renderer.pushGroup("Shapes");
+
+g.setColour(juce::Colours::red);
+g.fillRect(0, 0, 100, 100);
+
+renderer.popGroup();
+```
+
+### Text
+
+By default `juce::Graphics` text drawing methods will invoke the `drawGlyph()` method of the SVG context.
+
+If you wish to have text rendered as a `<text>` element rather than paths, all text drawing methods
+of `juce::Graphics` have a corresponding method here.
+
+The text methods in this context will render `<text>` elements, with nested `<tspan>` elements
+for multi-line text when needed.
+
+### Macros
+
+Preprocessor macros are a good way to be able to include SVG context commands in the same
+drawing code that's used for the normal graphics context.
+
+For example, you can create a macro to use the SVG context text methods if it's the current
+low level context:
+
+```C++
+
+#define _drawSingleLineText(g, text, startX, baselineY)                                 \
+            if (auto _ctx = dynamic_cast<LowLevelSVGRenderer*>(g.getInternalContext())) \
+                _ctx.drawSingleLineText(text, startX, baselineY);                       \
+            else                                                                        \
+                g.drawSingleLineText(text, startX, baselineY);                          \
+
+void paint(juce::Graphics &g)
+{
+    g.setColour(juce::Colours::black);
+
+    _drawSingleLineText(g, "foobar", 50, 10);
+}
+```
+
+
 # License
 
 Copyright 2018 Antonio Lassandro
