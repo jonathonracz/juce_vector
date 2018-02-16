@@ -36,6 +36,8 @@ g.fillRect(0, 0, 100, 100);
 renderer.popGroup();
 ```
 
+Using `pushGroup()` will always place the new group inside of any current group (including clip regions).
+
 ### Text
 
 By default `juce::Graphics` text drawing methods will invoke the `drawGlyph()` method of the SVG context.
@@ -56,11 +58,11 @@ low level context:
 
 ```C++
 
-#define _drawSingleLineText(g, text, startX, baselineY)                                 \
-            if (auto _ctx = dynamic_cast<LowLevelSVGRenderer*>(g.getInternalContext())) \
-                _ctx.drawSingleLineText(text, startX, baselineY);                       \
-            else                                                                        \
-                g.drawSingleLineText(text, startX, baselineY);                          \
+#define _drawSingleLineText(g, text, startX, baselineY)                                         \
+            if (auto _ctx = dynamic_cast<LowLevelGraphicsSVGRenderer*>(g.getInternalContext())) \
+                _ctx.drawSingleLineText(text, startX, baselineY);                               \
+            else                                                                                \
+                g.drawSingleLineText(text, startX, baselineY);                                  \
 
 void paint(juce::Graphics &g)
 {
