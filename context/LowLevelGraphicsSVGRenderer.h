@@ -44,6 +44,63 @@ public:
 
     // =========================================================================
 
+    void drawSingleLineText(
+        const juce::String&,
+        int startX,
+        int baselineY,
+        juce::Justification = juce::Justification::left
+    );
+
+    void drawMultiLineText(
+        const juce::String&,
+        int startX,
+        int baselineY,
+        int maximumLineWidth
+    );
+
+    void drawText(
+        const juce::String&,
+        int x,
+        int y,
+        int width,
+        int height,
+        juce::Justification,
+        bool useEllipsesIfTooBig = true
+    );
+
+    void drawText(
+        const juce::String&,
+        juce::Rectangle<int>,
+        juce::Justification,
+        bool useEllipsesIfTooBig = true
+    );
+
+    void drawText(
+        const juce::String&,
+        juce::Rectangle<float>,
+        juce::Justification,
+        bool useEllipsesIfTooBig = true
+    );
+
+    void drawFittedText(
+        const juce::String&,
+        int x,
+        int y,
+        int width,
+        int height,
+        juce::Justification,
+        int maximumNumberOfLines,
+        float minimumHorizontalScale = 0.0f
+    );
+
+    void drawFittedText(
+        const juce::String&,
+        juce::Rectangle<int>,
+        juce::Justification,
+        int maximumNumberOfLines,
+        float minimumHorizontalScale = 0.0f
+    );
+
     void pushGroup(const juce::String&);
     void popGroup();
 

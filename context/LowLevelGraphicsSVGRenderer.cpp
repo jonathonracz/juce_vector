@@ -359,6 +359,340 @@ void LowLevelGraphicsSVGRenderer::drawGlyph(int glyphNumber, const juce::AffineT
     fillPath(p, juce::AffineTransform());
 }
 
+void LowLevelGraphicsSVGRenderer::drawSingleLineText(
+    const juce::String &t,
+    int startX,
+    int baselineY,
+    juce::Justification justification)
+{
+    juce::XmlElement *text;
+
+    if (state->clipGroup)
+        text = state->clipGroup->createNewChildElement("text");
+    else
+        text = document->createNewChildElement("text");
+
+    auto f = state->font;
+
+    text->setAttribute("x", startX);
+    text->setAttribute("y", baselineY - f.getHeight());
+    text->setAttribute("font-family", f.getTypefaceName());
+    text->setAttribute("font-style", f.getTypefaceStyle());
+    text->setAttribute("font-size", f.getHeight());
+    text->setAttribute("fill", fill());
+
+    if (justification.testFlags(justification.left))
+        text->setAttribute("text-anchor", "start");
+
+    else if (justification.testFlags(justification.horizontallyCentred))
+        text->setAttribute("text-anchor", "middle");
+
+    else if (justification.testFlags(justification.right))
+        text->setAttribute("text-anchor", "end");
+
+    else
+        text->setAttribute("text-anchor", "inherited");
+
+
+    if (!state->transform.isIdentity())
+        text->setAttribute("transform", matrix(state->transform));
+
+    text->addTextElement(t);
+}
+
+void LowLevelGraphicsSVGRenderer::drawMultiLineText(
+    const juce::String &t,
+    int startX,
+    int baselineY,
+    int maximumLineWidth)
+{
+    juce::XmlElement *text;
+
+    if (state->clipGroup)
+        text = state->clipGroup->createNewChildElement("text");
+    else
+        text = document->createNewChildElement("text");
+
+    auto f = state->font;
+
+    text->setAttribute("x", startX);
+    text->setAttribute("y", baselineY - f.getHeight());
+    text->setAttribute("font-family", f.getTypefaceName());
+    text->setAttribute("font-style", f.getTypefaceStyle());
+    text->setAttribute("font-size", f.getHeight());
+    text->setAttribute("fill", fill());
+
+    if (!state->transform.isIdentity())
+        text->setAttribute("transform", matrix(state->transform));
+
+    auto t2 = t;
+
+    while (t2.isNotEmpty())
+    {
+        int len = f.getStringWidth(t2);
+
+        if (len > maximumLineWidth)
+        {
+            auto line = t2;
+
+            int i = 0;
+            while (f.getStringWidth(line) > maximumLineWidth)
+            {
+                line = line.dropLastCharacters(1);
+                i++;
+            }
+
+            auto tspan = text->createNewChildElement("tspan");
+            tspan->setAttribute("x", startX);
+            tspan->setAttribute("y", baselineY);
+            tspan->addTextElement(line);
+
+            t2 = t2.substring(i);
+
+            baselineY += (int)f.getHeight();
+        }
+        else
+        {
+            auto tspan = text->createNewChildElement("tspan");
+            tspan->setAttribute("x", startX);
+            tspan->setAttribute("y", baselineY);
+            tspan->addTextElement(t2);
+
+            t2 = "";
+        }
+    }
+}
+
+void LowLevelGraphicsSVGRenderer::drawText(
+    const juce::String &t,
+    int x,
+    int y,
+    int width,
+    int height,
+    juce::Justification justification,
+    bool useEllipsesIfTooBig)
+{
+    juce::XmlElement *text;
+
+    if (state->clipGroup)
+        text = state->clipGroup->createNewChildElement("text");
+    else
+        text = document->createNewChildElement("text");
+
+    auto f = state->font;
+
+    text->setAttribute("x", x);
+    text->setAttribute("font-family", f.getTypefaceName());
+    text->setAttribute("font-style", f.getTypefaceStyle());
+    text->setAttribute("font-size", f.getHeight());
+    text->setAttribute("fill", fill());
+
+    // FIXME: Will justify to x = 0 instead of the bounds
+    if (justification.testFlags(justification.left))
+        text->setAttribute("text-anchor", "start");
+
+    else if (justification.testFlags(justification.horizontallyCentred))
+        text->setAttribute("text-anchor", "middle");
+
+    else if (justification.testFlags(justification.right))
+        text->setAttribute("text-anchor", "end");
+
+
+    // FIXME: Should use proper vertical alignment
+    if (justification.testFlags(justification.verticallyCentred))
+        text->setAttribute("y", (y + (height / 2)) - f.getHeight() / 2);
+
+    else if (justification.testFlags(justification.bottom))
+        text->setAttribute("y", y);
+
+    else
+        text->setAttribute("y", y);
+
+
+    if (!state->transform.isIdentity())
+        text->setAttribute("transform", matrix(state->transform));
+
+    auto t2 = t;
+
+    auto len = f.getStringWidth(t);
+    if (len > width)
+    {
+        juce::String ellipses = (useEllipsesIfTooBig)
+            ? juce::String(juce::CharPointer_UTF8("\xe2\x80\xa6"))
+            : "";
+
+        while (f.getStringWidth(t2 + ellipses) > width)
+        {
+            t2 = t2.dropLastCharacters(1);
+        }
+
+        t2 += ellipses;
+    }
+
+    text->addTextElement(t2);
+}
+
+void LowLevelGraphicsSVGRenderer::drawText(
+    const juce::String &t,
+    juce::Rectangle<int> area,
+    juce::Justification justification,
+    bool useEllipsesIfTooBig)
+{
+    drawText(
+        t,
+        area.getX(),
+        area.getY(),
+        area.getWidth(),
+        area.getHeight(),
+        justification,
+        useEllipsesIfTooBig
+    );
+}
+
+void LowLevelGraphicsSVGRenderer::drawText(
+    const juce::String &t,
+    juce::Rectangle<float> area,
+    juce::Justification justification,
+    bool useEllipsesIfTooBig)
+{
+    drawText(
+        t,
+        (int)area.getX(),
+        (int)area.getY(),
+        (int)area.getWidth(),
+        (int)area.getHeight(),
+        justification,
+        useEllipsesIfTooBig
+    );
+}
+
+void LowLevelGraphicsSVGRenderer::drawFittedText(
+    const juce::String &t,
+    int x,
+    int y,
+    int width,
+    int height,
+    juce::Justification justification,
+    int maximumNumberOfLines,
+    float minimumHorizontalScale)
+{
+    juce::XmlElement *text;
+
+    if (state->clipGroup)
+        text = state->clipGroup->createNewChildElement("text");
+    else
+        text = document->createNewChildElement("text");
+
+    auto f = state->font;
+
+    text->setAttribute("x", x);
+
+    // FIXME: Will justify to x = 0 instead of the bounds
+    if (justification.testFlags(justification.left))
+        text->setAttribute("text-anchor", "start");
+
+    else if (justification.testFlags(justification.horizontallyCentred))
+        text->setAttribute("text-anchor", "middle");
+
+    else if (justification.testFlags(justification.right))
+        text->setAttribute("text-anchor", "end");
+
+
+    // FIXME: Should use proper vertical alignment
+    if (justification.testFlags(justification.verticallyCentred))
+        text->setAttribute("y", (y + (height / 2)) - f.getHeight() / 2);
+
+    else if (justification.testFlags(justification.bottom))
+        text->setAttribute("y", y);
+
+    else
+        text->setAttribute("y", y);
+        
+
+    // TODO: support minimumHorizontalScale values
+    if (minimumHorizontalScale == 0.0f)
+    {
+        text->setAttribute("textLength", width);
+        text->setAttribute("lengthAdjust", "spacingAndGlyphs");
+    }
+
+    text->setAttribute("font-family", f.getTypefaceName());
+    text->setAttribute("font-style", f.getTypefaceStyle());
+    text->setAttribute("font-size", f.getHeight());
+    text->setAttribute("fill", fill());
+
+    auto t2 = t;
+
+    if (maximumNumberOfLines > 1)
+    {
+        while (t2.isNotEmpty())
+        {
+            int len = t2.length();
+
+            if (len > width)
+            {
+                auto line = t2;
+
+                int i = 0;
+                while (f.getStringWidth(line) > width)
+                {
+                    line = line.dropLastCharacters(1);
+                    i++;
+                }
+
+                auto tspan = text->createNewChildElement("tspan");
+                tspan->setAttribute("x", x);
+                tspan->setAttribute("y", y);
+                tspan->addTextElement(line);
+
+                t2 = t2.substring(i);
+
+                y += (int)f.getHeight();
+            }
+            else
+            {
+                auto tspan = text->createNewChildElement("tspan");
+                tspan->setAttribute("x", x);
+                tspan->setAttribute("y", y);
+                tspan->addTextElement(t2);
+
+                t2 = "";
+            }
+        }
+    }
+    else
+    {
+        auto len = f.getStringWidth(t2);
+        if (len > width)
+        {
+            while (f.getStringWidth(t2) > width)
+            {
+                t2 = t2.dropLastCharacters(1);
+            }
+        }
+        text->addTextElement(t2);
+    }
+}
+
+void LowLevelGraphicsSVGRenderer::drawFittedText(
+    const juce::String &t,
+    juce::Rectangle<int> area,
+    juce::Justification justification,
+    int maximumNumberOfLines,
+    float minimumHorizontalScale)
+{
+    drawFittedText(
+        t,
+        area.getX(),
+        area.getY(),
+        area.getWidth(),
+        area.getHeight(),
+        justification,
+        maximumNumberOfLines,
+        minimumHorizontalScale
+    );
+}
+
 void LowLevelGraphicsSVGRenderer::pushGroup(const juce::String& groupID)
 {
     if (!state->clipGroup)
