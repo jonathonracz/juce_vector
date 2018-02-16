@@ -201,17 +201,35 @@ void LowLevelGraphicsSVGRenderer::setFill(const juce::FillType &fill)
             e->setAttribute("y2", truncateFloat(point2.y));
         }
 
-        for (int i = 0; i < fill.gradient->getNumColours(); ++i)
+        auto prevRef = getPreviousGradientRef(fill.gradient);
+
+        if (prevRef.isNotEmpty())
         {
-            auto stop = e->createNewChildElement("stop");
-            stop->setAttribute("offset", truncateFloat(fill.gradient->getColourPosition(i)));
-
-            if (!state->transform.isIdentity())
-                stop->setAttribute("gradientTransform", matrix(state->transform));
-
-            stop->setAttribute("stop-color", rgb(fill.gradient->getColour(i)));
-            stop->setAttribute("stop-opacity", truncateFloat(fill.gradient->getColour(i).getFloatAlpha()));
+            e->setAttribute("xlink:href", prevRef);
         }
+        else
+        {
+            for (int i = 0; i < fill.gradient->getNumColours(); ++i)
+            {
+                auto stop = e->createNewChildElement("stop");
+                stop->setAttribute(
+                    "offset",
+                    truncateFloat((float)fill.gradient->getColourPosition(i))
+                );
+
+                // FIXME: This will cause issues when prevRef is valid and gradients
+                // start being reused when there isn't a current transform
+                if (!state->transform.isIdentity())
+                    stop->setAttribute("gradientTransform", matrix(state->transform));
+
+                stop->setAttribute("stop-color", rgb(fill.gradient->getColour(i)));
+                stop->setAttribute("stop-opacity", truncateFloat(fill.gradient->getColour(i).getFloatAlpha()));
+            }
+        }
+    }
+    else
+    {
+        state->gradientRef = "";
     }
 }
 
@@ -403,6 +421,57 @@ juce::String LowLevelGraphicsSVGRenderer::truncateFloat(float value)
         string = string.dropLastCharacters(1);
 
     return string;
+}
+
+juce::String LowLevelGraphicsSVGRenderer::getPreviousGradientRef(juce::ColourGradient *g)
+{
+    if (previousGradients.size() == 0)
+    {
+        jassert(state->gradientRef.isNotEmpty());
+
+        GradientRef newRef;
+        newRef.gradient = *g;
+        newRef.ref = state->gradientRef;
+
+        previousGradients.add(newRef);
+        return "";
+    }
+
+    for (auto r : previousGradients)
+    {
+        auto previousGradient = &r.gradient;
+
+        if (previousGradient->getNumColours() != g->getNumColours())
+            continue;
+
+        bool match = false;
+
+        for (int i = 0; i < previousGradient->getNumColours(); ++i)
+        {
+            auto colour = previousGradient->getColour(i);
+            auto pos    = previousGradient->getColourPosition(i);
+
+            if (g->getColour(i) != colour)
+                break;
+
+            if (g->getColourPosition(i) != pos)
+                break;
+
+            match = true;
+        }
+
+        if (match)
+            return r.ref;
+    }
+
+    jassert(state->gradientRef.isNotEmpty());
+
+    GradientRef newRef;
+    newRef.gradient = *g;
+    newRef.ref = state->gradientRef;
+
+    previousGradients.add(newRef);
+    return "";
 }
 
 void LowLevelGraphicsSVGRenderer::setClip(const juce::Path &p)

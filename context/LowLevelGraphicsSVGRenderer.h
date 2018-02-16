@@ -55,6 +55,8 @@ private:
 
     juce::String truncateFloat(float);
 
+    juce::String getPreviousGradientRef(juce::ColourGradient*);
+
     void setClip(const juce::Path&);
     void setMask(const juce::Image&);
 
@@ -78,8 +80,16 @@ private:
         juce::Font font;
     };
 
+    struct GradientRef
+    {
+        juce::ColourGradient gradient;
+        juce::String ref;
+    };
+
     juce::OwnedArray<SavedState> stateStack;
     SavedState* state;
+
+    juce::Array<GradientRef> previousGradients;
 
     juce::XmlElement *document;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LowLevelGraphicsSVGRenderer)
