@@ -18,10 +18,8 @@ LowLevelGraphicsSVGRenderer::LowLevelGraphicsSVGRenderer(
     document->setAttribute("xmlns", "http://www.w3.org/2000/svg");
     document->setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
 
-    document->setAttribute(
-        "viewbox",
-        juce::String::formatted("%d %d %d %d", 0, 0, totalWidth, totalHeight)
-    );
+    document->setAttribute("width", totalWidth);
+    document->setAttribute("height", totalHeight);
 
     document->createNewChildElement("defs");
 }
