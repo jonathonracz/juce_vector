@@ -775,8 +775,6 @@ void LowLevelGraphicsSVGRenderer::applyTextPos(
 
     text->setAttribute("x", x);
     text->setAttribute("y", y);
-    text->setAttribute("width", width);
-    text->setAttribute("height", height);
 }
 
 void LowLevelGraphicsSVGRenderer::applyTags(juce::XmlElement *e)
