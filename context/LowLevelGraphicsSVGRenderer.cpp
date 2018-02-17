@@ -337,10 +337,12 @@ void LowLevelGraphicsSVGRenderer::fillRect(const juce::Rectangle<float> &r)
         rect = document->createNewChildElement("rect");
 
     rect->setAttribute("fill", writeFill());
-    rect->setAttribute(
-        "fill-opacity",
-        truncateFloat(state->fillType.getOpacity())
-    );
+
+    if (state->fillType.getOpacity() != 1.0f)
+        rect->setAttribute(
+            "fill-opacity",
+            truncateFloat(state->fillType.getOpacity())
+        );
 
     rect->setAttribute("x", truncateFloat(r.getX() + state->xOffset));
     rect->setAttribute("y", truncateFloat(r.getY() + state->yOffset));
@@ -374,10 +376,12 @@ void LowLevelGraphicsSVGRenderer::fillPath(
     path->setAttribute("d", d.toUpperCase());
 
     path->setAttribute("fill", writeFill());
-    path->setAttribute(
-        "fill-opacity",
-        truncateFloat(state->fillType.getOpacity())
-    );
+
+    if (state->fillType.getOpacity() != 1.0f)
+        path->setAttribute(
+            "fill-opacity",
+            truncateFloat(state->fillType.getOpacity())
+        );
 
     if (!p.isUsingNonZeroWinding())
         path->setAttribute("fill-rule", "evenodd");
