@@ -104,11 +104,16 @@ public:
     void pushGroup(const juce::String&);
     void popGroup();
 
+    void setTags(const juce::StringPairArray&);
+    void clearTags();
+
 private:
     // String format helpers
     juce::String matrix(const juce::AffineTransform&);
     juce::String rgb(const juce::Colour&);
     juce::String fill();
+
+    void applyTags(juce::XmlElement*);
 
     juce::String truncateFloat(float);
 
@@ -135,6 +140,8 @@ private:
         juce::String gradientRef;
 
         juce::Font font;
+
+        juce::StringPairArray tags;
     };
 
     struct GradientRef

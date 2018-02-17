@@ -264,6 +264,8 @@ void LowLevelGraphicsSVGRenderer::fillRect(const juce::Rectangle<float> &r)
     rect->setAttribute("y", truncateFloat(r.getY() + state->yOffset));
     rect->setAttribute("width",  truncateFloat(r.getWidth()));
     rect->setAttribute("height", truncateFloat(r.getHeight()));
+
+    applyTags(rect);
 }
 
 void LowLevelGraphicsSVGRenderer::fillRectList(const juce::RectangleList<float> &r)
@@ -290,6 +292,8 @@ void LowLevelGraphicsSVGRenderer::fillPath(const juce::Path &p, const juce::Affi
 
     if (!p.isUsingNonZeroWinding())
         path->setAttribute("fill-rule", "evenodd");
+
+    applyTags(path);
 }
 
 void LowLevelGraphicsSVGRenderer::drawImage(const juce::Image &i, const juce::AffineTransform &t)
@@ -315,6 +319,8 @@ void LowLevelGraphicsSVGRenderer::drawImage(const juce::Image &i, const juce::Af
 
     juce::String base64Data = juce::Base64::toBase64(out.getData(), out.getDataSize());
     image->setAttribute("xlink:href", "data:image/png;base64," + base64Data);
+
+    applyTags(image);
 }
 
 void LowLevelGraphicsSVGRenderer::drawLine(const juce::Line<float> &l)
@@ -335,6 +341,8 @@ void LowLevelGraphicsSVGRenderer::drawLine(const juce::Line<float> &l)
 
     if (!state->transform.isIdentity())
         line->setAttribute("transform", matrix(state->transform));
+
+    applyTags(line);
 }
 
 void LowLevelGraphicsSVGRenderer::setFont(const juce::Font &f)
@@ -398,6 +406,8 @@ void LowLevelGraphicsSVGRenderer::drawSingleLineText(
         text->setAttribute("transform", matrix(state->transform));
 
     text->addTextElement(t);
+
+    applyTags(text);
 }
 
 void LowLevelGraphicsSVGRenderer::drawMultiLineText(
@@ -461,6 +471,8 @@ void LowLevelGraphicsSVGRenderer::drawMultiLineText(
             t2 = "";
         }
     }
+
+    applyTags(text);
 }
 
 void LowLevelGraphicsSVGRenderer::drawText(
@@ -530,6 +542,8 @@ void LowLevelGraphicsSVGRenderer::drawText(
     }
 
     text->addTextElement(t2);
+
+    applyTags(text);
 }
 
 void LowLevelGraphicsSVGRenderer::drawText(
@@ -672,6 +686,8 @@ void LowLevelGraphicsSVGRenderer::drawFittedText(
         }
         text->addTextElement(t2);
     }
+
+    applyTags(text);
 }
 
 void LowLevelGraphicsSVGRenderer::drawFittedText(
@@ -722,6 +738,16 @@ void LowLevelGraphicsSVGRenderer::popGroup()
     }
 }
 
+void LowLevelGraphicsSVGRenderer::setTags(const juce::StringPairArray &s)
+{
+    state->tags = s;
+}
+
+void LowLevelGraphicsSVGRenderer::clearTags()
+{
+    state->tags.clear();
+}
+
 juce::String LowLevelGraphicsSVGRenderer::matrix(const juce::AffineTransform &t)
 {
     return juce::String::formatted(
@@ -745,6 +771,18 @@ juce::String LowLevelGraphicsSVGRenderer::fill()
         return "url(" + state->gradientRef + ")";
     else
         return rgb(state->fillType.colour);
+}
+
+void LowLevelGraphicsSVGRenderer::applyTags(juce::XmlElement *e)
+{
+    if (state->tags.size() == 0)
+        return;
+
+    auto keys   = state->tags.getAllKeys();
+    auto values = state->tags.getAllValues();
+
+    for (int i = 0; i < state->tags.size(); ++i)
+        e->setAttribute(keys[i], values[i]);
 }
 
 juce::String LowLevelGraphicsSVGRenderer::truncateFloat(float value)
