@@ -161,6 +161,9 @@ public:
         - ResamplingQuality::highResamplingQuality maps to
           image-rendering="optimizeQuality"
 
+        By default the interpolation quality is
+        ResamplingQuality::mediumResamplingQuality, or image-rendering="auto".
+
         This value is independent of the state stack.
     */
     void setInterpolationQuality(juce::Graphics::ResamplingQuality) override;
@@ -168,11 +171,37 @@ public:
     #pragma mark -
     // =========================================================================
 
+    /** Draws a rectangle.
+
+        The replaceExistingContents argument is required by
+        juce::LowLevelGraphicsContext, but is unused in this implementation.
+    */
     void fillRect(const juce::Rectangle<int>&, bool) override;
+
+    /** Draws a rectangle.
+    */
     void fillRect(const juce::Rectangle<float>&) override;
+
+    /** Draws a rectangle list.
+
+        Note, this will actually result in a single <path> element rather than
+        individual <rect> elements.
+    */
     void fillRectList(const juce::RectangleList<float>&) override;
+
+    /** Draws a path.
+    */
     void fillPath(const juce::Path&, const juce::AffineTransform&) override;
+
+    /** Embeds an image into the document.
+
+        The image-rendering attribute of the image will be set according to the
+        value set by setInterpolationQuality().
+    */
     void drawImage(const juce::Image&, const juce::AffineTransform&) override;
+
+    /** Draws a line.
+    */
     void drawLine(const juce::Line<float>&) override;
 
     #pragma mark -
