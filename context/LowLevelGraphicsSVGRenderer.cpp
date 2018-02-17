@@ -1,6 +1,27 @@
+/*
+    Copyright 2018 Antonio Lassandro
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to
+    deal in the Software without restriction, including without limitation the
+    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+    sell copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+    IN THE SOFTWARE.
+*/
+
 LowLevelGraphicsSVGRenderer::LowLevelGraphicsSVGRenderer(
     juce::XmlElement *svgDocument,
-    const juce::String &documentTitle,
     int totalWidth,
     int totalHeight)
 {
@@ -11,8 +32,13 @@ LowLevelGraphicsSVGRenderer::LowLevelGraphicsSVGRenderer(
     state->clipPath = state->clipRegions.toPath();
     state->clipGroup = nullptr;
 
+    resampleQuality = juce::Graphics::mediumResamplingQuality;
+
     document = svgDocument;
 
+    // XmlElements that don't have the proper name or that already have children
+    // will yield unusable or undefined results
+    jassert(document->getTagName().toLowerCase() == "svg");
     jassert(document->getNumChildElements() == 0);
 
     document->setAttribute("xmlns", "http://www.w3.org/2000/svg");
@@ -24,10 +50,21 @@ LowLevelGraphicsSVGRenderer::LowLevelGraphicsSVGRenderer(
     document->createNewChildElement("defs");
 }
 
+#pragma mark -
+// =============================================================================
+
 bool LowLevelGraphicsSVGRenderer::isVectorDevice() const
 {
     return true;
 }
+
+float LowLevelGraphicsSVGRenderer::getPhysicalPixelScaleFactor()
+{
+    return 1.0f;
+}
+
+#pragma mark - 
+// =============================================================================
 
 void LowLevelGraphicsSVGRenderer::setOrigin(juce::Point<int> p)
 {
@@ -49,10 +86,8 @@ void LowLevelGraphicsSVGRenderer::addTransform(const juce::AffineTransform &t)
     setClip(state->clipRegions.toPath());
 }
 
-float LowLevelGraphicsSVGRenderer::getPhysicalPixelScaleFactor()
-{
-    return 1.0f;
-}
+#pragma mark -
+// =============================================================================
 
 bool LowLevelGraphicsSVGRenderer::clipToRectangle(const juce::Rectangle<int> &r)
 {
@@ -63,7 +98,8 @@ bool LowLevelGraphicsSVGRenderer::clipToRectangle(const juce::Rectangle<int> &r)
     return !isClipEmpty();
 }
 
-bool LowLevelGraphicsSVGRenderer::clipToRectangleList(const juce::RectangleList<int> &r)
+bool LowLevelGraphicsSVGRenderer::clipToRectangleList(
+    const juce::RectangleList<int> &r)
 {
     state->clipRegions.clipTo(r);
 
@@ -72,21 +108,26 @@ bool LowLevelGraphicsSVGRenderer::clipToRectangleList(const juce::RectangleList<
     return !isClipEmpty();
 }
 
-void LowLevelGraphicsSVGRenderer::excludeClipRectangle(const juce::Rectangle<int> &r)
+void LowLevelGraphicsSVGRenderer::excludeClipRectangle(
+    const juce::Rectangle<int> &r)
 {
     state->clipRegions.subtract(r.translated(state->xOffset, state->yOffset));
 
     setClip(state->clipRegions.toPath());
 }
 
-void LowLevelGraphicsSVGRenderer::clipToPath(const juce::Path &p, const juce::AffineTransform &t)
+void LowLevelGraphicsSVGRenderer::clipToPath(
+    const juce::Path &p,
+    const juce::AffineTransform &t)
 {
     auto temp = p;
     temp.applyTransform(t.translated(state->xOffset, state->yOffset));
     setClip(temp);
 }
 
-void LowLevelGraphicsSVGRenderer::clipToImageAlpha(const juce::Image &i, const juce::AffineTransform &t)
+void LowLevelGraphicsSVGRenderer::clipToImageAlpha(
+    const juce::Image &i,
+    const juce::AffineTransform &t)
 {
     juce::Image maskImage(i);
 
@@ -94,7 +135,10 @@ void LowLevelGraphicsSVGRenderer::clipToImageAlpha(const juce::Image &i, const j
         maskImage = i.convertedToFormat(juce::Image::SingleChannel);
 
     auto defs = document->getChildByName("defs");
-    juce::String maskRef = juce::String::formatted("#Mask%d", defs->getNumChildElements());
+    auto maskRef = juce::String::formatted(
+        "#Mask%d",
+        defs->getNumChildElements()
+    );
 
     auto mask  = defs->createNewChildElement("mask");
     mask->setAttribute("id", maskRef.replace("#", ""));
@@ -105,21 +149,28 @@ void LowLevelGraphicsSVGRenderer::clipToImageAlpha(const juce::Image &i, const j
     image->setAttribute("width", i.getWidth());
     image->setAttribute("height", i.getHeight());
 
+    image->setAttribute("image-rendering", writeImageQuality());
+
     if (!t.isIdentity())
-        image->setAttribute("transform", matrix(state->transform.followedBy(t)));
+        image->setAttribute(
+            "transform",
+            writeTransform(state->transform.followedBy(t))
+        );
 
     juce::MemoryOutputStream out;
     juce::PNGImageFormat png;
     png.writeImageToStream(i, out);
 
-    juce::String base64Data = juce::Base64::toBase64(out.getData(), out.getDataSize());
+    auto base64Data = juce::Base64::toBase64(out.getData(), out.getDataSize());
+
     image->setAttribute("xlink:href", "data:image/png;base64," + base64Data);
 
     state->clipGroup = document->createNewChildElement("g");
     state->clipGroup->setAttribute("mask", "url(" + maskRef + ")");
 }
 
-bool LowLevelGraphicsSVGRenderer::clipRegionIntersects(const juce::Rectangle<int> &r)
+bool LowLevelGraphicsSVGRenderer::clipRegionIntersects(
+    const juce::Rectangle<int> &r)
 {
     auto rect = r.translated(state->xOffset, state->yOffset).toFloat();
     return state->clipPath.getBounds().intersects(rect);
@@ -127,13 +178,17 @@ bool LowLevelGraphicsSVGRenderer::clipRegionIntersects(const juce::Rectangle<int
 
 juce::Rectangle<int> LowLevelGraphicsSVGRenderer::getClipBounds() const
 {
-    return state->clipPath.getBounds().translated(-state->xOffset, -state->yOffset).toNearestInt();
+    return state->clipPath.getBounds()
+        .translated(-state->xOffset, -state->yOffset).toNearestInt();
 }
 
 bool LowLevelGraphicsSVGRenderer::isClipEmpty() const
 {
     return state->clipPath.isEmpty();
 }
+
+#pragma mark -
+// =============================================================================
 
 void LowLevelGraphicsSVGRenderer::saveState()
 {
@@ -147,6 +202,9 @@ void LowLevelGraphicsSVGRenderer::restoreState()
     stateStack.removeLast();
     state = stateStack.getLast();
 }
+
+#pragma mark -
+// =============================================================================
 
 void LowLevelGraphicsSVGRenderer::beginTransparencyLayer(float opacity)
 {
@@ -182,8 +240,11 @@ void LowLevelGraphicsSVGRenderer::setFill(const juce::FillType &fill)
 
         e->setAttribute("gradientUnits", "userSpaceOnUse");
 
-        auto point1 = fill.gradient->point1.translated(state->xOffset, state->yOffset);
-        auto point2 = fill.gradient->point2.translated(state->xOffset, state->yOffset);
+        auto point1 = fill.gradient->point1
+            .translated(state->xOffset, state->yOffset);
+
+        auto point2 = fill.gradient->point2
+            .translated(state->xOffset, state->yOffset);
 
         if (fill.gradient->isRadial)
         {
@@ -202,7 +263,10 @@ void LowLevelGraphicsSVGRenderer::setFill(const juce::FillType &fill)
         }
 
         if (!state->transform.isIdentity())
-            e->setAttribute("gradientTransform", matrix(state->transform));
+            e->setAttribute(
+                "gradientTransform",
+                writeTransform(state->transform)
+            );
 
         auto prevRef = getPreviousGradientRef(fill.gradient);
 
@@ -220,8 +284,15 @@ void LowLevelGraphicsSVGRenderer::setFill(const juce::FillType &fill)
                     truncateFloat((float)fill.gradient->getColourPosition(i))
                 );
 
-                stop->setAttribute("stop-color", rgb(fill.gradient->getColour(i)));
-                stop->setAttribute("stop-opacity", truncateFloat(fill.gradient->getColour(i).getFloatAlpha()));
+                stop->setAttribute(
+                    "stop-color",
+                    writeColour(fill.gradient->getColour(i))
+                );
+
+                stop->setAttribute(
+                    "stop-opacity",
+                    truncateFloat(fill.gradient->getColour(i).getFloatAlpha())
+                );
             }
         }
     }
@@ -236,13 +307,20 @@ void LowLevelGraphicsSVGRenderer::setOpacity(float opacity)
     state->fillType.setOpacity(opacity);
 }
 
-void LowLevelGraphicsSVGRenderer::setInterpolationQuality(juce::Graphics::ResamplingQuality quality)
+void LowLevelGraphicsSVGRenderer::setInterpolationQuality(
+    juce::Graphics::ResamplingQuality quality)
 {
-
+    resampleQuality = quality;
 }
 
-void LowLevelGraphicsSVGRenderer::fillRect(const juce::Rectangle<int> &r, bool replaceExistingContents)
+#pragma mark -
+// =============================================================================
+
+void LowLevelGraphicsSVGRenderer::fillRect(
+    const juce::Rectangle<int> &r,
+    bool replaceExistingContents)
 {
+    // TODO: Utilize replaceExistingContents
     fillRect(r.toFloat());
 }
 
@@ -255,8 +333,11 @@ void LowLevelGraphicsSVGRenderer::fillRect(const juce::Rectangle<float> &r)
     else
         rect = document->createNewChildElement("rect");
 
-    rect->setAttribute("fill", fill());
-    rect->setAttribute("fill-opacity", truncateFloat(state->fillType.getOpacity()));
+    rect->setAttribute("fill", writeFill());
+    rect->setAttribute(
+        "fill-opacity",
+        truncateFloat(state->fillType.getOpacity())
+    );
 
     rect->setAttribute("x", truncateFloat(r.getX() + state->xOffset));
     rect->setAttribute("y", truncateFloat(r.getY() + state->yOffset));
@@ -266,12 +347,15 @@ void LowLevelGraphicsSVGRenderer::fillRect(const juce::Rectangle<float> &r)
     applyTags(rect);
 }
 
-void LowLevelGraphicsSVGRenderer::fillRectList(const juce::RectangleList<float> &r)
+void LowLevelGraphicsSVGRenderer::fillRectList(
+    const juce::RectangleList<float> &r)
 {
     fillPath(r.toPath(), juce::AffineTransform());
 }
 
-void LowLevelGraphicsSVGRenderer::fillPath(const juce::Path &p, const juce::AffineTransform &t)
+void LowLevelGraphicsSVGRenderer::fillPath(
+    const juce::Path &p,
+    const juce::AffineTransform &t)
 {
     juce::XmlElement *path;
 
@@ -285,8 +369,12 @@ void LowLevelGraphicsSVGRenderer::fillPath(const juce::Path &p, const juce::Affi
 
     juce::String d = temp.toString().removeCharacters("a");
     path->setAttribute("d", d.toUpperCase());
-    path->setAttribute("fill", fill());
-    path->setAttribute("fill-opacity", truncateFloat(state->fillType.getOpacity()));
+
+    path->setAttribute("fill", writeFill());
+    path->setAttribute(
+        "fill-opacity",
+        truncateFloat(state->fillType.getOpacity())
+    );
 
     if (!p.isUsingNonZeroWinding())
         path->setAttribute("fill-rule", "evenodd");
@@ -294,7 +382,9 @@ void LowLevelGraphicsSVGRenderer::fillPath(const juce::Path &p, const juce::Affi
     applyTags(path);
 }
 
-void LowLevelGraphicsSVGRenderer::drawImage(const juce::Image &i, const juce::AffineTransform &t)
+void LowLevelGraphicsSVGRenderer::drawImage(
+    const juce::Image &i,
+    const juce::AffineTransform &t)
 {
     juce::XmlElement *image;
 
@@ -308,14 +398,19 @@ void LowLevelGraphicsSVGRenderer::drawImage(const juce::Image &i, const juce::Af
     image->setAttribute("width", i.getWidth());
     image->setAttribute("height", i.getHeight());
 
+    image->setAttribute("image-rendering", writeImageQuality());
+
     if (!t.isIdentity())
-        image->setAttribute("transform", matrix(state->transform.followedBy(t)));
+        image->setAttribute(
+            "transform",
+            writeTransform(state->transform.followedBy(t))
+        );
 
     juce::MemoryOutputStream out;
     juce::PNGImageFormat png;
     png.writeImageToStream(i, out);
 
-    juce::String base64Data = juce::Base64::toBase64(out.getData(), out.getDataSize());
+    auto base64Data = juce::Base64::toBase64(out.getData(), out.getDataSize());
     image->setAttribute("xlink:href", "data:image/png;base64," + base64Data);
 
     applyTags(image);
@@ -334,14 +429,21 @@ void LowLevelGraphicsSVGRenderer::drawLine(const juce::Line<float> &l)
     line->setAttribute("y1", truncateFloat(l.getStartY() + state->yOffset));
     line->setAttribute("x2", truncateFloat(l.getEndX()   + state->xOffset));
     line->setAttribute("y2", truncateFloat(l.getEndY()   + state->yOffset));
-    line->setAttribute("stroke", fill());
-    line->setAttribute("stroke-opacity", truncateFloat(state->fillType.getOpacity()));
+
+    line->setAttribute("stroke", writeFill());
+    line->setAttribute(
+        "stroke-opacity",
+        truncateFloat(state->fillType.getOpacity())
+    );
 
     if (!state->transform.isIdentity())
-        line->setAttribute("transform", matrix(state->transform));
+        line->setAttribute("transform", writeTransform(state->transform));
 
     applyTags(line);
 }
+
+#pragma mark -
+// =============================================================================
 
 void LowLevelGraphicsSVGRenderer::setFont(const juce::Font &f)
 {
@@ -353,17 +455,26 @@ const juce::Font& LowLevelGraphicsSVGRenderer::getFont()
     return state->font;
 }
 
-void LowLevelGraphicsSVGRenderer::drawGlyph(int glyphNumber, const juce::AffineTransform &t)
+void LowLevelGraphicsSVGRenderer::drawGlyph(
+    int glyphNumber,
+    const juce::AffineTransform &t)
 {
     juce::Path p;
     juce::Font &f = state->font;
     f.getTypeface()->getOutlineForGlyph(glyphNumber, p);
-    auto glyphTransform = juce::AffineTransform::scale(f.getHeight() * f.getHorizontalScale(), f.getHeight()).followedBy(t);
+
+    auto glyphTransform = juce::AffineTransform::scale(
+        f.getHeight() * f.getHorizontalScale(),
+        f.getHeight()
+    ).followedBy(t);
 
     p.applyTransform(glyphTransform);
 
     fillPath(p, juce::AffineTransform());
 }
+
+#pragma mark -
+// =============================================================================
 
 void LowLevelGraphicsSVGRenderer::drawSingleLineText(
     const juce::String &t,
@@ -386,7 +497,7 @@ void LowLevelGraphicsSVGRenderer::drawSingleLineText(
     text->setAttribute("font-family", tf->getName());
     text->setAttribute("font-style", tf->getStyle());
     text->setAttribute("font-size", f.getHeight());
-    text->setAttribute("fill", fill());
+    text->setAttribute("fill", writeFill());
 
     if (justification.testFlags(justification.left))
         text->setAttribute("text-anchor", "start");
@@ -402,7 +513,7 @@ void LowLevelGraphicsSVGRenderer::drawSingleLineText(
 
 
     if (!state->transform.isIdentity())
-        text->setAttribute("transform", matrix(state->transform));
+        text->setAttribute("transform", writeTransform(state->transform));
 
     text->addTextElement(t);
 
@@ -430,10 +541,10 @@ void LowLevelGraphicsSVGRenderer::drawMultiLineText(
     text->setAttribute("font-family", tf->getName());
     text->setAttribute("font-style", tf->getStyle());
     text->setAttribute("font-size", f.getHeight());
-    text->setAttribute("fill", fill());
+    text->setAttribute("fill", writeFill());
 
     if (!state->transform.isIdentity())
-        text->setAttribute("transform", matrix(state->transform));
+        text->setAttribute("transform", writeTransform(state->transform));
 
     auto t2 = t;
 
@@ -499,10 +610,10 @@ void LowLevelGraphicsSVGRenderer::drawText(
     text->setAttribute("font-family", tf->getName());
     text->setAttribute("font-style", tf->getStyle());
     text->setAttribute("font-size", f.getHeight());
-    text->setAttribute("fill", fill());
+    text->setAttribute("fill", writeFill());
 
     if (!state->transform.isIdentity())
-        text->setAttribute("transform", matrix(state->transform));
+        text->setAttribute("transform", writeTransform(state->transform));
 
     auto t2 = t;
 
@@ -592,7 +703,7 @@ void LowLevelGraphicsSVGRenderer::drawFittedText(
     text->setAttribute("font-family", tf->getName());
     text->setAttribute("font-style", tf->getStyle());
     text->setAttribute("font-size", f.getHeight());
-    text->setAttribute("fill", fill());
+    text->setAttribute("fill", writeFill());
 
     auto t2 = t;
 
@@ -672,6 +783,9 @@ void LowLevelGraphicsSVGRenderer::drawFittedText(
     );
 }
 
+#pragma mark -
+// =============================================================================
+
 void LowLevelGraphicsSVGRenderer::pushGroup(const juce::String& groupID)
 {
     if (!state->clipGroup)
@@ -711,95 +825,22 @@ void LowLevelGraphicsSVGRenderer::clearTags()
     state->tags.clear();
 }
 
-juce::String LowLevelGraphicsSVGRenderer::matrix(const juce::AffineTransform &t)
-{
-    return juce::String::formatted(
-        "matrix(%f,%f,%f,%f,%f,%f)",
-        t.mat00, t.mat01, t.mat02,
-        t.mat10, t.mat11, t.mat12
-    );
-}
-
-juce::String LowLevelGraphicsSVGRenderer::rgb(const juce::Colour &c)
-{
-    return juce::String::formatted(
-        "rgb(%d,%d,%d)",
-        c.getRed(), c.getGreen(), c.getBlue()
-    );
-}
-
-juce::String LowLevelGraphicsSVGRenderer::fill()
-{
-    if (state->fillType.isGradient())
-        return "url(" + state->gradientRef + ")";
-    else
-        return rgb(state->fillType.colour);
-}
-
-void LowLevelGraphicsSVGRenderer::applyTextPos(
-    juce::XmlElement *text,
-    int x, int y,
-    const int width, const int height,
-    const juce::Justification &j)
-{
-    if (j.testFlags(j.horizontallyCentred))
-    {
-        text->setAttribute("text-anchor", "middle");
-        x += width / 2;
-    }
-    else if (j.testFlags(j.right))
-    {
-        text->setAttribute("text-anchor", "end");
-        x += width;
-    }
-    else
-    {
-        text->setAttribute("text-anchor", "start");
-    }
-
-    if (j.testFlags(j.verticallyCentred))
-    {
-        text->setAttribute("dominant-baseline", "central");
-        y += height / 2;
-    }
-    else if (j.testFlags(j.bottom))
-    {
-        text->setAttribute("dominant-baseline", "ideographic");
-        y += height;
-    }
-    else
-    {
-        // FIXME: Hanging results in additional space above text
-        text->setAttribute("dominant-baseline", "hanging");
-    }
-
-    text->setAttribute("x", x);
-    text->setAttribute("y", y);
-}
-
-void LowLevelGraphicsSVGRenderer::applyTags(juce::XmlElement *e)
-{
-    if (state->tags.size() == 0)
-        return;
-
-    auto keys   = state->tags.getAllKeys();
-    auto values = state->tags.getAllValues();
-
-    for (int i = 0; i < state->tags.size(); ++i)
-        e->setAttribute(keys[i], values[i]);
-}
+#pragma mark -
+// =============================================================================
 
 juce::String LowLevelGraphicsSVGRenderer::truncateFloat(float value)
 {
     auto string = juce::String(value, 2);
 
-    while(string.getLastCharacters(1) == "." || (string.getLastCharacters(1) == "0" && string.contains(".")))
-        string = string.dropLastCharacters(1);
+    while (string.getLastCharacters(1) == "." ||
+          (string.getLastCharacters(1) == "0" && string.contains(".")))
+            string = string.dropLastCharacters(1);
 
     return string;
 }
 
-juce::String LowLevelGraphicsSVGRenderer::getPreviousGradientRef(juce::ColourGradient *g)
+juce::String LowLevelGraphicsSVGRenderer::getPreviousGradientRef(
+    juce::ColourGradient *g)
 {
     if (previousGradients.size() == 0)
     {
@@ -850,12 +891,111 @@ juce::String LowLevelGraphicsSVGRenderer::getPreviousGradientRef(juce::ColourGra
     return "";
 }
 
+juce::String LowLevelGraphicsSVGRenderer::writeTransform(
+    const juce::AffineTransform &t)
+{
+    return juce::String::formatted(
+        "matrix(%f,%f,%f,%f,%f,%f)",
+        t.mat00, t.mat01, t.mat02,
+        t.mat10, t.mat11, t.mat12
+    );
+}
+
+juce::String LowLevelGraphicsSVGRenderer::writeColour(const juce::Colour &c)
+{
+    return juce::String::formatted(
+        "rgb(%d,%d,%d)",
+        c.getRed(), c.getGreen(), c.getBlue()
+    );
+}
+
+juce::String LowLevelGraphicsSVGRenderer::writeFill()
+{
+    if (state->fillType.isGradient())
+        return "url(" + state->gradientRef + ")";
+    else
+        return writeColour(state->fillType.colour);
+}
+
+juce::String LowLevelGraphicsSVGRenderer::writeImageQuality()
+{
+    switch (resampleQuality)
+    {
+        case juce::Graphics::lowResamplingQuality:
+            return "optimizeSpeed";
+
+        case juce::Graphics::mediumResamplingQuality:
+            return "auto";
+
+        case juce::Graphics::highResamplingQuality:
+            return "optimizeQuality";
+    }
+}
+
+void LowLevelGraphicsSVGRenderer::applyTags(juce::XmlElement *e)
+{
+    if (state->tags.size() == 0)
+        return;
+
+    auto keys   = state->tags.getAllKeys();
+    auto values = state->tags.getAllValues();
+
+    for (int i = 0; i < state->tags.size(); ++i)
+        e->setAttribute(keys[i], values[i]);
+}
+
+#pragma mark -
+// =============================================================================
+
+void LowLevelGraphicsSVGRenderer::applyTextPos(
+    juce::XmlElement *text,
+    int x, int y,
+    const int width, const int height,
+    const juce::Justification &j)
+{
+    if (j.testFlags(j.horizontallyCentred))
+    {
+        text->setAttribute("text-anchor", "middle");
+        x += width / 2;
+    }
+    else if (j.testFlags(j.right))
+    {
+        text->setAttribute("text-anchor", "end");
+        x += width;
+    }
+    else
+    {
+        text->setAttribute("text-anchor", "start");
+    }
+
+    if (j.testFlags(j.verticallyCentred))
+    {
+        text->setAttribute("dominant-baseline", "central");
+        y += height / 2;
+    }
+    else if (j.testFlags(j.bottom))
+    {
+        text->setAttribute("dominant-baseline", "ideographic");
+        y += height;
+    }
+    else
+    {
+        text->setAttribute("dominant-baseline", "hanging");
+    }
+
+    text->setAttribute("x", x);
+    text->setAttribute("y", y);
+}
+
 void LowLevelGraphicsSVGRenderer::setClip(const juce::Path &p)
 {
     state->clipPath = p;
 
     auto defs = document->getChildByName("defs");
-    juce::String clipRef = juce::String::formatted("#ClipPath%d", defs->getNumChildElements());
+    auto clipRef = juce::String::formatted(
+        "#ClipPath%d",
+        defs->getNumChildElements()
+    );
 
     auto clipPath = defs->createNewChildElement("clipPath");
     clipPath->setAttribute("id", clipRef.replace("#", ""));
@@ -866,7 +1006,7 @@ void LowLevelGraphicsSVGRenderer::setClip(const juce::Path &p)
     if (!state->transform.isIdentity())
         path->setAttribute(
             "transform",
-            matrix(
+            writeTransform(
                 state->transform
             )
         );
