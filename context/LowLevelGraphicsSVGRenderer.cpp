@@ -494,33 +494,12 @@ void LowLevelGraphicsSVGRenderer::drawText(
     auto f = state->font;
     auto tf = f.getTypeface();
 
-    text->setAttribute("x", x);
+    applyTextPos(text, x, y, width, height, justification);
+
     text->setAttribute("font-family", tf->getName());
     text->setAttribute("font-style", tf->getStyle());
     text->setAttribute("font-size", f.getHeight());
     text->setAttribute("fill", fill());
-
-    // FIXME: Will justify to x = 0 instead of the bounds
-    if (justification.testFlags(justification.left))
-        text->setAttribute("text-anchor", "start");
-
-    else if (justification.testFlags(justification.horizontallyCentred))
-        text->setAttribute("text-anchor", "middle");
-
-    else if (justification.testFlags(justification.right))
-        text->setAttribute("text-anchor", "end");
-
-
-    // FIXME: Should use proper vertical alignment
-    if (justification.testFlags(justification.verticallyCentred))
-        text->setAttribute("y", (y + (height / 2)) - f.getHeight() / 2);
-
-    else if (justification.testFlags(justification.bottom))
-        text->setAttribute("y", y);
-
-    else
-        text->setAttribute("y", y);
-
 
     if (!state->transform.isIdentity())
         text->setAttribute("transform", matrix(state->transform));
@@ -601,29 +580,7 @@ void LowLevelGraphicsSVGRenderer::drawFittedText(
     auto f = state->font;
     auto tf = f.getTypeface();
 
-    text->setAttribute("x", x);
-
-    // FIXME: Will justify to x = 0 instead of the bounds
-    if (justification.testFlags(justification.left))
-        text->setAttribute("text-anchor", "start");
-
-    else if (justification.testFlags(justification.horizontallyCentred))
-        text->setAttribute("text-anchor", "middle");
-
-    else if (justification.testFlags(justification.right))
-        text->setAttribute("text-anchor", "end");
-
-
-    // FIXME: Should use proper vertical alignment
-    if (justification.testFlags(justification.verticallyCentred))
-        text->setAttribute("y", (y + (height / 2)) - f.getHeight() / 2);
-
-    else if (justification.testFlags(justification.bottom))
-        text->setAttribute("y", y);
-
-    else
-        text->setAttribute("y", y);
-        
+    applyTextPos(text, x, y, width, height, justification);
 
     // TODO: support minimumHorizontalScale values
     if (minimumHorizontalScale == 0.0f)
@@ -659,6 +616,8 @@ void LowLevelGraphicsSVGRenderer::drawFittedText(
                 auto tspan = text->createNewChildElement("tspan");
                 tspan->setAttribute("x", x);
                 tspan->setAttribute("y", y);
+                tspan->setAttribute("text-anchor", "auto");
+                tspan->setAttribute("dominant-baseline", "auto");
                 tspan->addTextElement(line);
 
                 t2 = t2.substring(i);
@@ -670,6 +629,8 @@ void LowLevelGraphicsSVGRenderer::drawFittedText(
                 auto tspan = text->createNewChildElement("tspan");
                 tspan->setAttribute("x", x);
                 tspan->setAttribute("y", y);
+                tspan->setAttribute("text-anchor", "auto");
+                tspan->setAttribute("dominant-baseline", "auto");
                 tspan->addTextElement(t2);
 
                 t2 = "";
@@ -773,6 +734,49 @@ juce::String LowLevelGraphicsSVGRenderer::fill()
         return "url(" + state->gradientRef + ")";
     else
         return rgb(state->fillType.colour);
+}
+
+void LowLevelGraphicsSVGRenderer::applyTextPos(
+    juce::XmlElement *text,
+    int x, int y,
+    const int width, const int height,
+    const juce::Justification &j)
+{
+    if (j.testFlags(j.horizontallyCentred))
+    {
+        text->setAttribute("text-anchor", "middle");
+        x += width / 2;
+    }
+    else if (j.testFlags(j.right))
+    {
+        text->setAttribute("text-anchor", "end");
+        x += width;
+    }
+    else
+    {
+        text->setAttribute("text-anchor", "start");
+    }
+
+    if (j.testFlags(j.verticallyCentred))
+    {
+        text->setAttribute("dominant-baseline", "central");
+        y += height / 2;
+    }
+    else if (j.testFlags(j.bottom))
+    {
+        text->setAttribute("dominant-baseline", "ideographic");
+        y += height;
+    }
+    else
+    {
+        // FIXME: Hanging results in additional space above text
+        text->setAttribute("dominant-baseline", "hanging");
+    }
+
+    text->setAttribute("x", x);
+    text->setAttribute("y", y);
+    text->setAttribute("width", width);
+    text->setAttribute("height", height);
 }
 
 void LowLevelGraphicsSVGRenderer::applyTags(juce::XmlElement *e)

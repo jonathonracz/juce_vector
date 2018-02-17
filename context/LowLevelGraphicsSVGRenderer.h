@@ -113,6 +113,15 @@ private:
     juce::String rgb(const juce::Colour&);
     juce::String fill();
 
+    void applyTextPos(
+        juce::XmlElement*,
+        int x,
+        int y,
+        const int width,
+        const int height,
+        const juce::Justification&
+    );
+
     void applyTags(juce::XmlElement*);
 
     juce::String truncateFloat(float);
