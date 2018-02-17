@@ -201,6 +201,9 @@ void LowLevelGraphicsSVGRenderer::setFill(const juce::FillType &fill)
             e->setAttribute("y2", truncateFloat(point2.y));
         }
 
+        if (!state->transform.isIdentity())
+            e->setAttribute("gradientTransform", matrix(state->transform));
+
         auto prevRef = getPreviousGradientRef(fill.gradient);
 
         if (prevRef.isNotEmpty())
@@ -216,11 +219,6 @@ void LowLevelGraphicsSVGRenderer::setFill(const juce::FillType &fill)
                     "offset",
                     truncateFloat((float)fill.gradient->getColourPosition(i))
                 );
-
-                // FIXME: This will cause issues when prevRef is valid and gradients
-                // start being reused when there isn't a current transform
-                if (!state->transform.isIdentity())
-                    stop->setAttribute("gradientTransform", matrix(state->transform));
 
                 stop->setAttribute("stop-color", rgb(fill.gradient->getColour(i)));
                 stop->setAttribute("stop-opacity", truncateFloat(fill.gradient->getColour(i).getFloatAlpha()));
