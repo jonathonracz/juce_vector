@@ -318,9 +318,8 @@ void LowLevelGraphicsSVGRenderer::setInterpolationQuality(
 
 void LowLevelGraphicsSVGRenderer::fillRect(
     const juce::Rectangle<int> &r,
-    bool replaceExistingContents)
+    bool /* replaceExistingContents */)
 {
-    // TODO: Utilize replaceExistingContents
     fillRect(r.toFloat());
 }
 
