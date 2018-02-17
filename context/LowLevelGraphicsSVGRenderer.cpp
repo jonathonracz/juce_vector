@@ -379,11 +379,12 @@ void LowLevelGraphicsSVGRenderer::drawSingleLineText(
         text = document->createNewChildElement("text");
 
     auto f = state->font;
+    auto tf = f.getTypeface();
 
     text->setAttribute("x", startX);
     text->setAttribute("y", baselineY - f.getHeight());
-    text->setAttribute("font-family", f.getTypefaceName());
-    text->setAttribute("font-style", f.getTypefaceStyle());
+    text->setAttribute("font-family", tf->getName());
+    text->setAttribute("font-style", tf->getStyle());
     text->setAttribute("font-size", f.getHeight());
     text->setAttribute("fill", fill());
 
@@ -422,11 +423,12 @@ void LowLevelGraphicsSVGRenderer::drawMultiLineText(
         text = document->createNewChildElement("text");
 
     auto f = state->font;
+    auto tf = f.getTypeface();
 
     text->setAttribute("x", startX);
     text->setAttribute("y", baselineY - f.getHeight());
-    text->setAttribute("font-family", f.getTypefaceName());
-    text->setAttribute("font-style", f.getTypefaceStyle());
+    text->setAttribute("font-family", tf->getName());
+    text->setAttribute("font-style", tf->getStyle());
     text->setAttribute("font-size", f.getHeight());
     text->setAttribute("fill", fill());
 
@@ -490,10 +492,11 @@ void LowLevelGraphicsSVGRenderer::drawText(
         text = document->createNewChildElement("text");
 
     auto f = state->font;
+    auto tf = f.getTypeface();
 
     text->setAttribute("x", x);
-    text->setAttribute("font-family", f.getTypefaceName());
-    text->setAttribute("font-style", f.getTypefaceStyle());
+    text->setAttribute("font-family", tf->getName());
+    text->setAttribute("font-style", tf->getStyle());
     text->setAttribute("font-size", f.getHeight());
     text->setAttribute("fill", fill());
 
@@ -596,6 +599,7 @@ void LowLevelGraphicsSVGRenderer::drawFittedText(
         text = document->createNewChildElement("text");
 
     auto f = state->font;
+    auto tf = f.getTypeface();
 
     text->setAttribute("x", x);
 
@@ -628,8 +632,8 @@ void LowLevelGraphicsSVGRenderer::drawFittedText(
         text->setAttribute("lengthAdjust", "spacingAndGlyphs");
     }
 
-    text->setAttribute("font-family", f.getTypefaceName());
-    text->setAttribute("font-style", f.getTypefaceStyle());
+    text->setAttribute("font-family", tf->getName());
+    text->setAttribute("font-style", tf->getStyle());
     text->setAttribute("font-size", f.getHeight());
     text->setAttribute("fill", fill());
 
