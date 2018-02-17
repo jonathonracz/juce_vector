@@ -33,7 +33,8 @@ class LowLevelGraphicsSVGRenderer : public juce::LowLevelGraphicsContext
 public:
     /** Creates a new SVG renderer.
 
-        @param svgD
+        The totalWidth and totalHeight arguments will be applied as
+        <svg width=totalWidth height=totalHeight>.
     */
     LowLevelGraphicsSVGRenderer(
         juce::XmlElement *svgDocument,
@@ -214,7 +215,6 @@ public:
     /** Returns the current font
     */
     const juce::Font& getFont() override;
-
 
     /** Inserts a glyph as an SVG path transformed by a given
         juce::AffineTransform.
