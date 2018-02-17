@@ -25,7 +25,7 @@
 
         ID:			  	juce_vector
         vendor:		  	Antonio Lassandro
-        version:	  	0.1.0
+        version:	  	0.2.0
         name:           JUCE Vector
         description:	Vector graphics helper library
         website:		github.com/lassandroan

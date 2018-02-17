@@ -202,6 +202,8 @@ public:
         This will use the current colour (or brush) to fill the text. The font
         is the last one specified by setFont().
 
+        The text will be exported as a <text> element rather than a path.
+
         @param text          the string to draw
         @param startX        the position to draw the left-hand edge of the text
         @param baselineY     the position of the text's baseline
@@ -220,6 +222,9 @@ public:
         This will break the text onto a new line where there's a new-line or
         carriage-return character, or at a word-boundary when the text becomes
         wider than the size specified by the maximumLineWidth parameter.
+
+        The text will be exported as a <text> element, with nested <tspan>
+        elements, rather than a path.
     */
     void drawMultiLineText(
         const juce::String&,
@@ -234,6 +239,8 @@ public:
         justification flags passed-in. If the string is too long to fit inside
         the rectangle, it will either be truncated or will have ellipsis added
         to its end (if the useEllipsesIfTooBig flag is true).
+
+        The text will be exported as a <text> element rather than a path.
     */
     void drawText(
         const juce::String&,
@@ -251,6 +258,8 @@ public:
         justification flags passed-in. If the string is too long to fit inside
         the rectangle, it will either be truncated or will have ellipsis added
         to its end (if the useEllipsesIfTooBig flag is true).
+
+        The text will be exported as a <text> element rather than a path.
     */
     void drawText(
         const juce::String&,
@@ -265,6 +274,8 @@ public:
         justification flags passed-in. If the string is too long to fit inside
         the rectangle, it will either be truncated or will have ellipsis added
         to its end (if the useEllipsesIfTooBig flag is true).
+
+        The text will be exported as a <text> element rather than a path.
     */
     void drawText(
         const juce::String&,
@@ -287,6 +298,10 @@ public:
         squashed horizontally to try to squeeze it into the space. If you don't
         want any horizontal scaling to occur, you can set this value to 1.0f.
         Pass 0 if you want it to use a default value.
+
+        The text will be exported as a <text> element rather than a path.
+        Nested <tspan> elements will be used if the text is broken up into
+        multiple lines.
     */
     void drawFittedText(
         const juce::String&,
@@ -313,6 +328,10 @@ public:
         squashed horizontally to try to squeeze it into the space. If you don't
         want any horizontal scaling to occur, you can set this value to 1.0f.
         Pass 0 if you want it to use a default value.
+
+        The text will be exported as a <text> element rather than a path.
+        Nested <tspan> elements will be used if the text is broken up into
+        multiple lines.
     */
     void drawFittedText(
         const juce::String&,
