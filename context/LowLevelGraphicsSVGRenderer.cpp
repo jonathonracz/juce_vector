@@ -165,7 +165,11 @@ void LowLevelGraphicsSVGRenderer::clipToImageAlpha(
 
     image->setAttribute("xlink:href", "data:image/png;base64," + base64Data);
 
-    state->clipGroup = document->createNewChildElement("g");
+    if (!state->clipGroup)
+        state->clipGroup = document->createNewChildElement("g");
+
+    state->clipGroup = state->clipGroup->createNewChildElement("g");
+
     state->clipGroup->setAttribute("mask", "url(" + maskRef + ")");
 }
 
