@@ -34,6 +34,11 @@ public:
     enum ExportFlags
     {
         None            = 0,
+
+        /** For fillRectList(), this option forces the context to draw each
+            rectangle as a <rect> element rather than draw the whole list as a
+            single <path>.
+        */
         ExpandRectLists = 2 << 0,
     };
 

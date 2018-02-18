@@ -294,10 +294,11 @@ void LowLevelGraphicsSVGRenderer::setFill(const juce::FillType &fill)
                     writeColour(fill.gradient->getColour(i))
                 );
 
-                stop->setAttribute(
-                    "stop-opacity",
-                    truncateFloat(fill.gradient->getColour(i).getFloatAlpha())
-                );
+                if (fill.gradient->getColour(i).getFloatAlpha() != 1.0f)
+                    stop->setAttribute(
+                        "stop-opacity",
+                        truncateFloat(fill.gradient->getColour(i).getFloatAlpha())
+                    );
             }
         }
     }
@@ -337,7 +338,8 @@ void LowLevelGraphicsSVGRenderer::fillRect(const juce::Rectangle<float> &r)
     else
         rect = document->createNewChildElement("rect");
 
-    rect->setAttribute("fill", writeFill());
+    if (writeFill() != "rgb(0,0,0)")
+        rect->setAttribute("fill", writeFill());
 
     if (state->fillType.getOpacity() != 1.0f)
         rect->setAttribute(
@@ -380,7 +382,8 @@ void LowLevelGraphicsSVGRenderer::fillPath(
     juce::String d = temp.toString().removeCharacters("a");
     path->setAttribute("d", d.toUpperCase());
 
-    path->setAttribute("fill", writeFill());
+    if (writeFill() != "rgb(0,0,0)")
+        path->setAttribute("fill", writeFill());
 
     if (state->fillType.getOpacity() != 1.0f)
         path->setAttribute(
@@ -442,7 +445,8 @@ void LowLevelGraphicsSVGRenderer::drawLine(const juce::Line<float> &l)
     line->setAttribute("x2", truncateFloat(l.getEndX()   + state->xOffset));
     line->setAttribute("y2", truncateFloat(l.getEndY()   + state->yOffset));
 
-    line->setAttribute("stroke", writeFill());
+    if (writeFill() != "rgb(0,0,0)")
+        line->setAttribute("stroke", writeFill());
 
     if (state->fillType.getOpacity() != 1.0f)
         line->setAttribute(
@@ -511,7 +515,9 @@ void LowLevelGraphicsSVGRenderer::drawSingleLineText(
     text->setAttribute("font-family", tf->getName());
     text->setAttribute("font-style", tf->getStyle());
     text->setAttribute("font-size", f.getHeight());
-    text->setAttribute("fill", writeFill());
+
+    if (writeFill() != "rgb(0,0,0)")
+        text->setAttribute("fill", writeFill());
 
     if (justification.testFlags(justification.left))
         text->setAttribute("text-anchor", "start");
@@ -555,7 +561,9 @@ void LowLevelGraphicsSVGRenderer::drawMultiLineText(
     text->setAttribute("font-family", tf->getName());
     text->setAttribute("font-style", tf->getStyle());
     text->setAttribute("font-size", f.getHeight());
-    text->setAttribute("fill", writeFill());
+
+    if (writeFill() != "rgb(0,0,0)")
+        text->setAttribute("fill", writeFill());
 
     if (!state->transform.isIdentity())
         text->setAttribute("transform", writeTransform(state->transform));
@@ -624,7 +632,9 @@ void LowLevelGraphicsSVGRenderer::drawText(
     text->setAttribute("font-family", tf->getName());
     text->setAttribute("font-style", tf->getStyle());
     text->setAttribute("font-size", f.getHeight());
-    text->setAttribute("fill", writeFill());
+
+    if (writeFill() != "rgb(0,0,0)")
+        text->setAttribute("fill", writeFill());
 
     if (!state->transform.isIdentity())
         text->setAttribute("transform", writeTransform(state->transform));
@@ -717,7 +727,9 @@ void LowLevelGraphicsSVGRenderer::drawFittedText(
     text->setAttribute("font-family", tf->getName());
     text->setAttribute("font-style", tf->getStyle());
     text->setAttribute("font-size", f.getHeight());
-    text->setAttribute("fill", writeFill());
+
+    if (writeFill() != "rgb(0,0,0)")
+        text->setAttribute("fill", writeFill());
 
     auto t2 = t;
 
