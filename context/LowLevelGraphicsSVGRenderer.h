@@ -31,6 +31,12 @@
 class LowLevelGraphicsSVGRenderer : public juce::LowLevelGraphicsContext
 {
 public:
+    enum ExportFlags
+    {
+        None            = 0,
+        ExpandRectLists = 2 << 0,
+    };
+
     /** Creates a new SVG renderer.
 
         The totalWidth and totalHeight arguments will be applied as
@@ -38,7 +44,8 @@ public:
     */
     LowLevelGraphicsSVGRenderer(
         juce::XmlElement *svgDocument,
-        int totalWidth, int totalHeight
+        int totalWidth, int totalHeight,
+        ExportFlags flags = None
     );
 
     #pragma mark -
@@ -471,6 +478,8 @@ private:
     juce::Array<GradientRef> previousGradients;
 
     juce::Graphics::ResamplingQuality resampleQuality;
+
+    const ExportFlags exportFlags;
 
     juce::XmlElement *document;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LowLevelGraphicsSVGRenderer)

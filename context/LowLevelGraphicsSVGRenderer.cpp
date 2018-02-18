@@ -23,7 +23,8 @@
 LowLevelGraphicsSVGRenderer::LowLevelGraphicsSVGRenderer(
     juce::XmlElement *svgDocument,
     int totalWidth,
-    int totalHeight)
+    int totalHeight,
+    ExportFlags flags) : exportFlags(flags)
 {
     stateStack.add(new SavedState());
     state = stateStack.getLast();
@@ -355,7 +356,11 @@ void LowLevelGraphicsSVGRenderer::fillRect(const juce::Rectangle<float> &r)
 void LowLevelGraphicsSVGRenderer::fillRectList(
     const juce::RectangleList<float> &r)
 {
-    fillPath(r.toPath(), juce::AffineTransform());
+    if (exportFlags & ExportFlags::ExpandRectLists)
+        for (auto rect : r)
+            fillRect(rect);
+    else
+        fillPath(r.toPath(), juce::AffineTransform());
 }
 
 void LowLevelGraphicsSVGRenderer::fillPath(
