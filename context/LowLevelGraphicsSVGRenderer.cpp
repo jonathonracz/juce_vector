@@ -443,10 +443,12 @@ void LowLevelGraphicsSVGRenderer::drawLine(const juce::Line<float> &l)
     line->setAttribute("y2", truncateFloat(l.getEndY()   + state->yOffset));
 
     line->setAttribute("stroke", writeFill());
-    line->setAttribute(
-        "stroke-opacity",
-        truncateFloat(state->fillType.getOpacity())
-    );
+
+    if (state->fillType.getOpacity() != 1.0f)
+        line->setAttribute(
+            "stroke-opacity",
+            truncateFloat(state->fillType.getOpacity())
+        );
 
     if (!state->transform.isIdentity())
         line->setAttribute("transform", writeTransform(state->transform));
