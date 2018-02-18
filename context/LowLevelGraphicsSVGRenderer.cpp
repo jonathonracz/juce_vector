@@ -24,7 +24,7 @@ LowLevelGraphicsSVGRenderer::LowLevelGraphicsSVGRenderer(
     juce::XmlElement *svgDocument,
     int totalWidth,
     int totalHeight,
-    ExportFlags flags) : exportFlags(flags)
+    int flags) : exportFlags(flags)
 {
     stateStack.add(new SavedState());
     state = stateStack.getLast();
@@ -512,9 +512,9 @@ void LowLevelGraphicsSVGRenderer::drawSingleLineText(
 
     text->setAttribute("x", startX);
     text->setAttribute("y", baselineY - f.getHeight());
-    text->setAttribute("font-family", tf->getName());
+    text->setAttribute("font-family", writeFont());
     text->setAttribute("font-style", tf->getStyle());
-    text->setAttribute("font-size", f.getHeight());
+    text->setAttribute("font-size", truncateFloat(f.getHeight()));
 
     if (writeFill() != "rgb(0,0,0)")
         text->setAttribute("fill", writeFill());
@@ -558,9 +558,9 @@ void LowLevelGraphicsSVGRenderer::drawMultiLineText(
 
     text->setAttribute("x", startX);
     text->setAttribute("y", baselineY - f.getHeight());
-    text->setAttribute("font-family", tf->getName());
+    text->setAttribute("font-family", writeFont());
     text->setAttribute("font-style", tf->getStyle());
-    text->setAttribute("font-size", f.getHeight());
+    text->setAttribute("font-size", truncateFloat(f.getHeight()));
 
     if (writeFill() != "rgb(0,0,0)")
         text->setAttribute("fill", writeFill());
@@ -627,11 +627,11 @@ void LowLevelGraphicsSVGRenderer::drawText(
     auto f = state->font;
     auto tf = f.getTypeface();
 
-    applyTextPos(text, x, y, width, height, justification);
+    applyTextPos(t, text, x, y, width, height, justification);
 
-    text->setAttribute("font-family", tf->getName());
+    text->setAttribute("font-family", writeFont());
     text->setAttribute("font-style", tf->getStyle());
-    text->setAttribute("font-size", f.getHeight());
+    text->setAttribute("font-size", truncateFloat(f.getHeight()));
 
     if (writeFill() != "rgb(0,0,0)")
         text->setAttribute("fill", writeFill());
@@ -715,7 +715,7 @@ void LowLevelGraphicsSVGRenderer::drawFittedText(
     auto f = state->font;
     auto tf = f.getTypeface();
 
-    applyTextPos(text, x, y, width, height, justification);
+    applyTextPos(t, text, x, y, width, height, justification);
 
     // TODO: support minimumHorizontalScale values
     if (minimumHorizontalScale == 0.0f)
@@ -724,9 +724,9 @@ void LowLevelGraphicsSVGRenderer::drawFittedText(
         text->setAttribute("lengthAdjust", "spacingAndGlyphs");
     }
 
-    text->setAttribute("font-family", tf->getName());
+    text->setAttribute("font-family", writeFont());
     text->setAttribute("font-style", tf->getStyle());
-    text->setAttribute("font-size", f.getHeight());
+    text->setAttribute("font-size", truncateFloat(f.getHeight()));
 
     if (writeFill() != "rgb(0,0,0)")
         text->setAttribute("fill", writeFill());
@@ -943,6 +943,31 @@ juce::String LowLevelGraphicsSVGRenderer::writeFill()
         return writeColour(state->fillType.colour);
 }
 
+juce::String LowLevelGraphicsSVGRenderer::writeFont()
+{
+    auto f = state->font;
+    auto tf = f.getTypeface();
+
+    juce::String result = tf->getName();
+
+    auto serif = juce::Font::getDefaultSerifFontName();
+    auto sans  = juce::Font::getDefaultSansSerifFontName();
+    auto mono  = juce::Font::getDefaultMonospacedFontName();
+
+    auto fn = f.getTypefaceName();
+
+    if (fn == serif)
+        result += ", serif";
+    else if (fn == sans)
+        result += ", sans-serif";
+    else if (fn == mono)
+        result += ", monospace";
+
+    result += ", system-ui";
+
+    return result;
+}
+
 juce::String LowLevelGraphicsSVGRenderer::writeImageQuality()
 {
     switch (resampleQuality)
@@ -974,39 +999,75 @@ void LowLevelGraphicsSVGRenderer::applyTags(juce::XmlElement *e)
 // =============================================================================
 
 void LowLevelGraphicsSVGRenderer::applyTextPos(
+    const juce::String &t,
     juce::XmlElement *text,
     int x, int y,
     const int width, const int height,
     const juce::Justification &j)
 {
-    if (j.testFlags(j.horizontallyCentred))
+    if (exportFlags & UseAbsoluteTextPositions)
     {
-        text->setAttribute("text-anchor", "middle");
-        x += width / 2;
-    }
-    else if (j.testFlags(j.right))
-    {
-        text->setAttribute("text-anchor", "end");
-        x += width;
-    }
-    else
-    {
-        text->setAttribute("text-anchor", "start");
-    }
+        auto f = state->font;
 
-    if (j.testFlags(j.verticallyCentred))
-    {
-        text->setAttribute("dominant-baseline", "central");
-        y += height / 2;
-    }
-    else if (j.testFlags(j.bottom))
-    {
-        text->setAttribute("dominant-baseline", "ideographic");
-        y += height;
+        // FIXME: getStringWidth() is consistently returning a lower string
+        // width than what the actual output looks like when in an editor. Only
+        // tested on OSX so far.
+        auto tWidth  = f.getStringWidth(t);
+        auto tHeight = f.getHeight();
+
+        if (j.testFlags(j.horizontallyCentred))
+        {
+            x += (width / 2) - (tWidth / 2);
+        }
+        else if (j.testFlags(j.right))
+        {
+            x += width - tWidth;
+        }
+
+        if (j.testFlags(j.verticallyCentred))
+        {
+            y += (height / 2) + (tHeight / 2);
+        }
+        else if (j.testFlags(j.bottom))
+        {
+            y += height - tHeight;
+        }
+        else
+        {
+            y += tHeight;
+        }
     }
     else
     {
-        text->setAttribute("dominant-baseline", "hanging");
+        if (j.testFlags(j.horizontallyCentred))
+        {
+            text->setAttribute("text-anchor", "middle");
+            x += width / 2;
+        }
+        else if (j.testFlags(j.right))
+        {
+            text->setAttribute("text-anchor", "end");
+            x += width;
+        }
+        else
+        {
+            text->setAttribute("text-anchor", "start");
+        }
+
+        if (j.testFlags(j.verticallyCentred))
+        {
+            text->setAttribute("dominant-baseline", "central");
+            y += height / 2;
+        }
+        else if (j.testFlags(j.bottom))
+        {
+            text->setAttribute("dominant-baseline", "ideographic");
+            y += height;
+        }
+        else
+        {
+            text->setAttribute("dominant-baseline", "hanging");
+        }
     }
 
     text->setAttribute("x", x);

@@ -33,13 +33,19 @@ class LowLevelGraphicsSVGRenderer : public juce::LowLevelGraphicsContext
 public:
     enum ExportFlags
     {
-        None            = 0,
+        None = 0,
 
         /** For fillRectList(), this option forces the context to draw each
             rectangle as a <rect> element rather than draw the whole list as a
             single <path>.
         */
-        ExpandRectLists = 2 << 0,
+        ExpandRectLists = 1 << 0,
+
+        /** This flag forces all of the text rendering methods to output
+            absolute positions for <text> elements instead using the
+            dominant-baseline and text-anchor attributes.
+        */
+        UseAbsoluteTextPositions = 1 << 1,
     };
 
     /** Creates a new SVG renderer.
@@ -50,7 +56,7 @@ public:
     LowLevelGraphicsSVGRenderer(
         juce::XmlElement *svgDocument,
         int totalWidth, int totalHeight,
-        ExportFlags flags = None
+        int flags = None
     );
 
     #pragma mark -
@@ -428,6 +434,7 @@ private:
     juce::String writeTransform(const juce::AffineTransform&);
     juce::String writeColour(const juce::Colour&);
     juce::String writeFill();
+    juce::String writeFont();
     juce::String writeImageQuality();
 
     void applyTags(juce::XmlElement*);
@@ -436,6 +443,7 @@ private:
     // =========================================================================
 
     void applyTextPos(
+        const juce::String&,
         juce::XmlElement*,
         int x,
         int y,
@@ -484,7 +492,7 @@ private:
 
     juce::Graphics::ResamplingQuality resampleQuality;
 
-    const ExportFlags exportFlags;
+    const int exportFlags;
 
     juce::XmlElement *document;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LowLevelGraphicsSVGRenderer)
