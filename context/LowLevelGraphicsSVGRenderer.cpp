@@ -1039,8 +1039,8 @@ void LowLevelGraphicsSVGRenderer::setClip(const juce::Path &p)
 
     if (!state->clipGroup)
         state->clipGroup = document->createNewChildElement("g");
-
-    state->clipGroup = state->clipGroup->createNewChildElement("g");
+    else
+        state->clipGroup = state->clipGroup->createNewChildElement("g");
 
     state->clipGroup->setAttribute("clip-path", "url(" + clipRef + ")");
 }
