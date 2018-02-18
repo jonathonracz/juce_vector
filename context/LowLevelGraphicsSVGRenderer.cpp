@@ -130,10 +130,12 @@ void LowLevelGraphicsSVGRenderer::clipToImageAlpha(
     const juce::Image &i,
     const juce::AffineTransform &t)
 {
-    juce::Image maskImage(i);
+    auto maskImage = i;
 
-    if (i.getFormat() != juce::Image::SingleChannel)
-        maskImage = i.convertedToFormat(juce::Image::SingleChannel);
+    #if !JUCE_MAC
+      if (i.getFormat() != juce::Image::ARGB)
+          maskImage = i.convertedToFormat(juce::Image::SingleChannel);
+    #endif
 
     auto defs = document->getChildByName("defs");
     auto maskRef = juce::String::formatted(
@@ -141,7 +143,7 @@ void LowLevelGraphicsSVGRenderer::clipToImageAlpha(
         defs->getNumChildElements()
     );
 
-    auto mask  = defs->createNewChildElement("mask");
+    auto mask = defs->createNewChildElement("mask");
     mask->setAttribute("id", maskRef.replace("#", ""));
 
     auto image = mask->createNewChildElement("image");
@@ -160,7 +162,7 @@ void LowLevelGraphicsSVGRenderer::clipToImageAlpha(
 
     juce::MemoryOutputStream out;
     juce::PNGImageFormat png;
-    png.writeImageToStream(i, out);
+    png.writeImageToStream(maskImage, out);
 
     auto base64Data = juce::Base64::toBase64(out.getData(), out.getDataSize());
 
