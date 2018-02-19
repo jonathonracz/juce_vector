@@ -468,6 +468,7 @@ private:
         juce::Path clipPath;
 
         juce::XmlElement *clipGroup;
+        juce::String clipRef;
 
         juce::AffineTransform transform;
 

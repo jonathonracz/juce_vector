@@ -1078,32 +1078,42 @@ void LowLevelGraphicsSVGRenderer::applyTextPos(
 
 void LowLevelGraphicsSVGRenderer::setClip(const juce::Path &p)
 {
-    state->clipPath = p;
+    if (p == state->clipPath && state->clipRef.isNotEmpty())
+    {
+        state->clipGroup = state->clipGroup->createNewChildElement("g");
+        state->clipGroup->setAttribute("clip-path", "url(" + state->clipRef + ")");
+    }
+    else
+    {
+        state->clipPath = p;
 
-    auto defs = document->getChildByName("defs");
-    auto clipRef = juce::String::formatted(
-        "#ClipPath%d",
-        defs->getNumChildElements()
-    );
-
-    auto clipPath = defs->createNewChildElement("clipPath");
-    clipPath->setAttribute("id", clipRef.replace("#", ""));
-
-    auto path = clipPath->createNewChildElement("path");
-    path->setAttribute("d", state->clipPath.toString().toUpperCase());
-
-    if (!state->transform.isIdentity())
-        path->setAttribute(
-            "transform",
-            writeTransform(
-                state->transform
-            )
+        auto defs = document->getChildByName("defs");
+        auto clipRef = juce::String::formatted(
+            "#ClipPath%d",
+            defs->getNumChildElements()
         );
 
-    if (!state->clipGroup)
-        state->clipGroup = document->createNewChildElement("g");
-    else
-        state->clipGroup = state->clipGroup->createNewChildElement("g");
+        state->clipRef = clipRef;
 
-    state->clipGroup->setAttribute("clip-path", "url(" + clipRef + ")");
+        auto clipPath = defs->createNewChildElement("clipPath");
+        clipPath->setAttribute("id", clipRef.replace("#", ""));
+
+        auto path = clipPath->createNewChildElement("path");
+        path->setAttribute("d", state->clipPath.toString().toUpperCase());
+
+        if (!state->transform.isIdentity())
+            path->setAttribute(
+                "transform",
+                writeTransform(
+                    state->transform
+                )
+            );
+
+        if (!state->clipGroup)
+            state->clipGroup = document->createNewChildElement("g");
+        else
+            state->clipGroup = state->clipGroup->createNewChildElement("g");
+
+        state->clipGroup->setAttribute("clip-path", "url(" + clipRef + ")");
+    }
 }
