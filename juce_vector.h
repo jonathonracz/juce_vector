@@ -38,10 +38,29 @@
 
 #pragma once
 
-
 #define SVGDOCTYPE "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">"
-
 
 #include <juce_graphics/juce_graphics.h>
 
+// =============================================================================
+
+/** Config: SVG_USE_CONTEXT_HELPERS
+
+    This enables context switching so you can use the helper methods in your
+    normal drawing code. The helper methods are static inline functions that
+    call the correct method depending on whether or not the current low level
+    context is a LowLevelGraphicsSVGRenderer.
+
+    If this is disabled the functions call the correct juce::Graphics
+    method (in the case of text drawing helpers) or simply do nothing (in the
+    case of the grouping and tag helpers).
+*/
+#ifndef SVG_USE_CONTEXT_HELPERS
+  #define SVG_USE_CONTEXT_HELPERS 0
+#endif
+
+// =============================================================================
+
 #include "context/LowLevelGraphicsSVGRenderer.h"
+#include "context/SVGContextHelpers.h"
+
